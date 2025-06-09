@@ -2,13 +2,11 @@ app: vjepa
 nodes: 16
 tasks_per_node: 8
 data:
-  dataset_type: VideoDataset
+  dataset_type: VideoDataset #TODO MriDataset
   datasets:
-    - /your_path_to_kinetics710_csv_file_index.csv
-    - /your_path_to_ssv2_csv_file_index.csv
-    - /your_path_to_howto100m_csv_file_index.csv
+  - /local_data/sean_hasitha/sean/VJEPA/jepa/BrainSlice96_noAOIXSO.csv
   decode_one_clip: true
-  batch_size: 24
+  batch_size: 32
   num_clips: 1
   num_frames: 16
   tubelet_size: 2
@@ -30,8 +28,8 @@ data_aug:
   - 1.0
   reprob: 0.0
 logging:
-  folder: /your_absolute_file_path_for_saving_logs_and_checkpoints/
-  write_tag: jepa
+  folder: /local_data/sean_hasitha/sean/V_jepa_logs/32batchsize_vitl_96skip
+  write_tag: 32batchsize_vitl_96skip
 loss:
   loss_exp: 1.0
   reg_coeff: 0.0
@@ -61,10 +59,10 @@ mask:
     max_temporal_keep: 1.0
     max_keep: null
 meta:
-  load_checkpoint: false
-  read_checkpoint: null
+  load_checkpoint: true
+  read_checkpoint: /local_data/sean_hasitha/sean/VJEPA/jepa/vitl16.pth.tar
   seed: 234
-  eval_freq: 100
+  eval_freq: 5
   use_sdpa: true
   dtype: bfloat16
 model:
@@ -80,11 +78,13 @@ optimization:
   clip_grad: 10.0
   weight_decay: 0.04
   final_weight_decay: 0.4
-  epochs: 300
+  epochs: 400
   warmup: 40
-  start_lr: 0.0002
+  start_lr: 01.0e-03
   lr: 0.000625
   final_lr: 1.0e-06
   ema:
   - 0.998
   - 1.0
+
+#python -m app.main --fname /local_data/sean_hasitha/sean/VJEPA/jepa/configs/pretrain/vitl16_96skip_32batchsize.yaml \--devices cuda:7

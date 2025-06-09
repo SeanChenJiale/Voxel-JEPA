@@ -1,10 +1,3 @@
-# Copyright (c) Meta Platforms, Inc. and affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
-#
-
 from logging import getLogger
 
 
@@ -43,6 +36,7 @@ def init_data(
     repeat_wds=False,
     ipe=300,
     log_dir=None,
+    debug=False,
 ):
 
     if (data.lower() == 'imagenet') \
@@ -86,6 +80,27 @@ def init_data(
             world_size=world_size,
             rank=rank,
             drop_last=drop_last,
+            log_dir=log_dir,
+            debug=debug,)
+    
+    
+    #### New by Hasitha
+    elif data.lower() == 'mridataset':
+        from src.datasets.mri_dataset import make_mridataset
+        dataset, data_loader, dist_sampler = make_mridataset(
+            data_paths=root_path,
+            batch_size=batch_size,
+            num_slices= clip_len , # user wants 16 RGB frames = 48 axial slices
+            transform=transform,
+            gap = frame_sample_rate, # Step between slices to control spacing
+            collator=collator,
+            num_workers=num_workers,
+            world_size=world_size,
+            rank=rank,
+            drop_last=drop_last,
+            pin_mem=pin_mem,
+            datasets_weights=datasets_weights,
             log_dir=log_dir)
+        
 
     return (data_loader, dist_sampler)

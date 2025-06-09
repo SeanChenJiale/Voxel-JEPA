@@ -43,7 +43,8 @@ from src.utils.schedulers import (
 )
 from src.utils.logging import (
     AverageMeter,
-    CSVLogger
+    CSVLogger,
+    init_csv_writer
 )
 
 from evals.video_classification_frozen.utils import (
@@ -64,8 +65,7 @@ torch.backends.cudnn.benchmark = True
 pp = pprint.PrettyPrinter(indent=4)
 
 
-def main(args_eval, resume_preempt=False):
-
+def main(args_eval, resume_preempt=False, debug=False):
     # ----------------------------------------------------------------------- #
     #  PASSED IN PARAMS FROM CONFIG FILE
     # ----------------------------------------------------------------------- #
@@ -142,11 +142,24 @@ def main(args_eval, resume_preempt=False):
     latest_path = os.path.join(folder, f'{tag}-latest.pth.tar')
 
     # -- make csv_logger
+    # if rank == 0:
+    #     csv_logger = CSVLogger(log_file,
+    #                            ('%d', 'epoch'),
+    #                            ('%.5f', 'loss'),
+    #                            ('%.5f', 'acc'))
+    #### New part by Hasitha
     if rank == 0:
-        csv_logger = CSVLogger(log_file,
-                               ('%d', 'epoch'),
-                               ('%.5f', 'loss'),
-                               ('%.5f', 'acc'))
+        if args_eval.get("plotter", "csv") == "wandb":
+            from src.utils.logging import WandBCSVLoggerEval
+            csv_logger = WandBCSVLoggerEval(csv_path=log_file)
+        else:
+            csv_logger = CSVLogger(
+                log_file,
+                ('%d', 'epoch'),
+                ('%.5f', 'loss'),
+                ('%.5f', 'acc')
+            )
+    #######################
 
     # Initialize model
 
@@ -293,6 +306,12 @@ def main(args_eval, resume_preempt=False):
         if rank == 0:
             csv_logger.log(epoch + 1, train_acc, val_acc)
         save_checkpoint(epoch + 1)
+    
+    ### New part by Hasitha
+    if rank == 0 and args_eval.get("plotter", "csv") == "wandb":
+        import wandb
+        wandb.finish()
+    #######################
 
 
 def run_one_epoch(

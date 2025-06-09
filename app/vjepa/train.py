@@ -28,7 +28,7 @@ from torch.nn.parallel import DistributedDataParallel
 
 from src.datasets.data_manager import init_data
 from src.masks.random_tube import MaskCollator as TubeMaskCollator
-from src.masks.multiblock3d import MaskCollator as MB3DMaskCollator
+from jepa.src.masks.multiblock3d_fix import MaskCollator as MB3DMaskCollator
 from src.masks.utils import apply_masks
 from src.utils.distributed import init_distributed, AllReduce
 from src.utils.logging import (
@@ -63,7 +63,7 @@ torch.backends.cudnn.benchmark = True
 logger = get_logger(__name__)
 
 
-def main(args, resume_preempt=False):
+def main(args, resume_preempt=False,debug=False):
     # ----------------------------------------------------------------------- #
     #  PASSED IN PARAMS FROM CONFIG FILE
     # ----------------------------------------------------------------------- #
@@ -190,18 +190,37 @@ def main(args, resume_preempt=False):
             load_model = False
 
     # -- make csv_logger
-    csv_logger = CSVLogger(
-        log_file,
-        ('%d', 'epoch'),
-        ('%d', 'itr'),
-        ('%.5f', 'loss'),
-        ('%.5f', 'loss-jepa'),
-        ('%.5f', 'reg-loss'),
-        ('%.5f', 'enc-grad-norm'),
-        ('%.5f', 'pred-grad-norm'),
-        ('%d', 'gpu-time(ms)'),
-        ('%d', 'wall-time(ms)'),
-    )
+    # csv_logger = CSVLogger(
+    #     log_file,
+    #     ('%d', 'epoch'),
+    #     ('%d', 'itr'),
+    #     ('%.5f', 'loss'),
+    #     ('%.5f', 'loss-jepa'),
+    #     ('%.5f', 'reg-loss'),
+    #     ('%.5f', 'enc-grad-norm'),
+    #     ('%.5f', 'pred-grad-norm'),
+    #     ('%d', 'gpu-time(ms)'),
+    #     ('%d', 'wall-time(ms)'),
+    # )
+    ######## New by Hasitha ####
+    if args.get("plotter", "csv") == "wandb":
+        from src.utils.logging import WandBCSVLogger
+        logger_impl = WandBCSVLogger(csv_path=log_file)
+    else:
+        logger_impl = CSVLogger(
+            log_file,
+            ('%d', 'epoch'),
+            ('%d', 'itr'),
+            ('%.5f', 'loss'),
+            ('%.5f', 'loss-jepa'),
+            ('%.5f', 'reg-loss'),
+            ('%.5f', 'enc-grad-norm'),
+            ('%.5f', 'pred-grad-norm'),
+            ('%d', 'gpu-time(ms)'),
+            ('%d', 'wall-time(ms)'),
+        )
+
+    ############################
 
     # -- init model
     encoder, predictor = init_video_model(
@@ -388,6 +407,7 @@ def main(args, resume_preempt=False):
             assert len(masks_enc) == len(masks_pred), \
                 'Currently require num encoder masks = num predictor masks'
 
+
             def load_clips():
                 # -- unsupervised video clips
                 # Put each clip on the GPU and concatenate along batch
@@ -407,6 +427,7 @@ def main(args, resume_preempt=False):
 
                 return (clips, _masks_enc, _masks_pred)
             clips, masks_enc, masks_pred = load_clips()
+            
 
             for _i, m in enumerate(mask_meters):
                 m.update(masks_enc[_i][0].size(-1))
@@ -510,7 +531,7 @@ def main(args, resume_preempt=False):
 
             # -- Logging
             def log_stats():
-                csv_logger.log(
+                logger_impl.log( ####### New by Hasitha ###############
                     epoch + 1,
                     itr,
                     loss,
@@ -520,6 +541,8 @@ def main(args, resume_preempt=False):
                     grad_stats_pred.global_norm,
                     gpu_etime_ms,
                     iter_elapsed_time_ms)
+                
+
                 if (itr % log_freq == 0) or np.isnan(loss) or np.isinf(loss):
                     logger.info(
                         '[%d, %5d] loss: %.3f | p%.3f r%.3f | '
@@ -572,6 +595,8 @@ def main(args, resume_preempt=False):
                                grad_stats_pred.min,
                                grad_stats_pred.max,
                                grad_stats_pred.global_norm))
+                        
+                        
             log_stats()
             assert not np.isnan(loss), 'loss is nan'
 
@@ -584,3 +609,9 @@ def main(args, resume_preempt=False):
                 save_every_file = f'{tag}-e{epoch}.pth.tar'
                 save_every_path = os.path.join(folder, save_every_file)
                 save_checkpoint(epoch + 1, save_every_path)
+        
+    ##### New by Hasitha ####
+    if args.get("plotter", "csv") == "wandb":
+        import wandb
+        wandb.finish()
+            

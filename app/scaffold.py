@@ -13,9 +13,11 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger()
 
 
-def main(app, args, resume_preempt=False):
+def main(app, args, resume_preempt=False,debug=False,save_mask=False): # app_main(params['app'], args=params, debug=debug)
 
     logger.info(f'Running pre-training of app: {app}')
-    return importlib.import_module(f'app.{app}.train').main(
+
+    return importlib.import_module(f'app.{app}.train_v2').main(
         args=args,
-        resume_preempt=resume_preempt)
+        resume_preempt=resume_preempt,debug=debug,save_mask=save_mask)
+

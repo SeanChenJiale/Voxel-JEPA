@@ -116,3 +116,45 @@ def adamw_logger(optimizer):
         exp_avg_stats.update(float(s.get('exp_avg').abs().mean()))
         exp_avg_sq_stats.update(float(s.get('exp_avg_sq').abs().mean()))
     return {'exp_avg': exp_avg_stats, 'exp_avg_sq': exp_avg_sq_stats}
+
+
+# New wandb classs by Hasitha; 
+        
+class WandBCSVLogger(CSVLogger):
+    def __init__(self, csv_path):
+        self.csv_path = csv_path
+        self.fields = [
+            ('%d', 'epoch'),
+            ('%d', 'itr'),
+            ('%.5f', 'loss'),
+            ('%.5f', 'loss-jepa'),
+            ('%.5f', 'reg-loss'),
+            ('%.5f', 'enc-grad-norm'),
+            ('%.5f', 'pred-grad-norm'),
+            ('%d', 'gpu-time(ms)'),
+            ('%d', 'wall-time(ms)')
+        ]
+        super().__init__(csv_path, *self.fields)
+        import wandb
+        self.wandb = wandb
+
+    def log(self, *args):
+        keys = [k for (_, k) in self.fields]
+        self.wandb.log(dict(zip(keys, args)))
+        super().log(*args)
+
+def init_csv_writer(file_path):
+    import csv
+    """
+    Initialize a CSV writer and return the writer object.
+    
+    Args:
+        file_path (str): Path to the CSV file to write to.
+    
+    Returns:
+        csv.writer: A CSV writer object.
+        file: The opened file object (to ensure it stays open).
+    """
+    file = open(file_path, mode='w', newline='')
+    writer = csv.writer(file)
+    return writer, file

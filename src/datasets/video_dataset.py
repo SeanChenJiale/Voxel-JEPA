@@ -19,6 +19,7 @@ from decord import VideoReader, cpu
 import torch
 
 from src.datasets.utils.weighted_sampler import DistributedWeightedSampler
+from src.utils.logging import init_csv_writer
 
 _GLOBAL_SEED = 0
 logger = getLogger()
@@ -45,6 +46,7 @@ def make_videodataset(
     pin_mem=True,
     duration=None,
     log_dir=None,
+    debug=False
 ):
     dataset = VideoDataset(
         data_paths=data_paths,
@@ -58,7 +60,8 @@ def make_videodataset(
         filter_long_videos=filter_long_videos,
         duration=duration,
         shared_transform=shared_transform,
-        transform=transform)
+        transform=transform,
+        debug=debug)
 
     logger.info('VideoDataset dataset created')
     if datasets_weights is not None:
@@ -105,7 +108,10 @@ class VideoDataset(torch.utils.data.Dataset):
         filter_short_videos=False,
         filter_long_videos=int(10**9),
         duration=None,  # duration in seconds
+        debug=False,
+        save_csv_path=None,
     ):
+        self.debug=debug
         self.data_paths = data_paths
         self.datasets_weights = datasets_weights
         self.frames_per_clip = frames_per_clip
@@ -118,7 +124,6 @@ class VideoDataset(torch.utils.data.Dataset):
         self.filter_short_videos = filter_short_videos
         self.filter_long_videos = filter_long_videos
         self.duration = duration
-
         if VideoReader is None:
             raise ImportError('Unable to import "decord" which is required to read videos.')
 
@@ -132,6 +137,10 @@ class VideoDataset(torch.utils.data.Dataset):
                 samples += list(data.values[:, 0])
                 labels += list(data.values[:, 1])
                 num_samples = len(data)
+                # if self.debug:
+                #     logger.info(f"DEBUG first 3 samples: {samples[:3]}")
+                #     logger.info(f"DEBUG num_samples: {num_samples}, taking from {data_path}")
+
                 self.num_samples_per_dataset.append(num_samples)
 
             elif data_path[-4:] == '.npy':
@@ -150,8 +159,8 @@ class VideoDataset(torch.utils.data.Dataset):
             for dw, ns in zip(self.datasets_weights, self.num_samples_per_dataset):
                 self.sample_weights += [dw / ns] * ns
 
-        self.samples = samples
-        self.labels = labels
+        self.samples = samples ### a list of video paths
+        self.labels = labels ### a list of labels
 
     def __getitem__(self, index):
         sample = self.samples[index]
@@ -164,7 +173,6 @@ class VideoDataset(torch.utils.data.Dataset):
             if not loaded_video:
                 index = np.random.randint(self.__len__())
                 sample = self.samples[index]
-
         # Label/annotations for video
         label = self.labels[index]
 
@@ -180,8 +188,10 @@ class VideoDataset(torch.utils.data.Dataset):
         buffer = split_into_clips(buffer)
         if self.transform is not None:
             buffer = [self.transform(clip) for clip in buffer]
-
-        return buffer, label, clip_indices
+        # if self.debug:
+        #     logger.info(f"DEBUG buffer length is: {len(buffer)}")
+        
+        return buffer, label, clip_indices, sample , index
 
     def loadvideo_decord(self, sample):
         """ Load video content using Decord """
@@ -213,7 +223,7 @@ class VideoDataset(torch.utils.data.Dataset):
             except Exception as e:
                 warnings.warn(e)
         clip_len = int(fpc * fstp)
-
+        
         if self.filter_short_videos and len(vr) < clip_len:
             warnings.warn(f'skipping video of length {len(vr)}')
             return [], None
@@ -223,6 +233,9 @@ class VideoDataset(torch.utils.data.Dataset):
         # Partition video into equal sized segments and sample each clip
         # from a different segment
         partition_len = len(vr) // self.num_clips
+
+        # if self.debug:
+        #     logger.info(f"DEBUG frame step: {fstp}, clip length: {clip_len}, partition length: {partition_len}")
 
         all_indices, clip_indices = [], []
         for i in range(self.num_clips):

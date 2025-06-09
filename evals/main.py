@@ -24,9 +24,22 @@ parser.add_argument(
 parser.add_argument(
     '--devices', type=str, nargs='+', default=['cuda:0'],
     help='which devices to use on local machine')
+parser.add_argument(
+    '--plotter', type=str,
+    default='wandb',
+    help='what plotter to use: csv or wandb')
+parser.add_argument(
+    '--validation', type=lambda x: x.lower() == 'true',
+    default=False,
+    help='whether to run validation or not (True/False)'
+)
+parser.add_argument(
+    '--debug' , type=lambda x: x.lower() == 'true',
+    default=False,
+    help='whether to run validation or not (True/False)'
+)
 
-
-def process_main(rank, fname, world_size, devices):
+def process_main(rank, fname, world_size, devices, plotter, validation, debug):
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = str(devices[rank].split(':')[-1])
 
@@ -39,11 +52,13 @@ def process_main(rank, fname, world_size, devices):
         logger.setLevel(logging.ERROR)
 
     logger.info(f'called-params {fname}')
+    
 
     # Load config
     params = None
     with open(fname, 'r') as y_file:
         params = yaml.load(y_file, Loader=yaml.FullLoader)
+        # params['plotter'] = plotter  # Add plotter to config
         logger.info('loaded params...')
         pp = pprint.PrettyPrinter(indent=4)
         pp.pprint(params)
@@ -51,9 +66,19 @@ def process_main(rank, fname, world_size, devices):
     # Init distributed (access to comm between GPUS on same machine)
     world_size, rank = init_distributed(rank_and_world_size=(rank, world_size))
     logger.info(f'Running... (rank: {rank}/{world_size})')
-
+    
+    ### New part by Hasitha
+    if rank == 0 and plotter == 'wandb':
+        import wandb
+        wandb.init(
+            project=params['logging'].get('project', 'voxel-jepa-fine-tuning'),
+            config=params,
+            name=params['logging'].get('run_name', 'voxel-finetune-test'),
+            mode="offline"  # Run in offline mode           
+        )
     # Launch the eval with loaded config
-    eval_main(params['eval_name'], args_eval=params)
+    eval_main(params['eval_name'], args_eval=params, validation=validation, debug=debug)
+
 
 
 if __name__ == '__main__':
@@ -63,5 +88,5 @@ if __name__ == '__main__':
     for rank in range(num_gpus):
         mp.Process(
             target=process_main,
-            args=(rank, args.fname, num_gpus, args.devices)
+            args=(rank, args.fname, num_gpus, args.devices, args.plotter, args.validation, args.debug)
         ).start()

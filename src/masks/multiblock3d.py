@@ -26,9 +26,10 @@ class MaskCollator(object):
         num_frames=16,
         patch_size=(16, 16),
         tubelet_size=2,
+        debug=False
     ):
         super(MaskCollator, self).__init__()
-
+        self.debug=debug
         self.mask_generators = []
         for m in cfgs_mask:
             mask_generator = _MaskGenerator(
@@ -45,6 +46,7 @@ class MaskCollator(object):
             )
             self.mask_generators.append(mask_generator)
 
+
     def step(self):
         for mask_generator in self.mask_generators:
             mask_generator.step()
@@ -59,7 +61,10 @@ class MaskCollator(object):
             masks_enc, masks_pred = mask_generator(batch_size)
             collated_masks_enc.append(masks_enc)
             collated_masks_pred.append(masks_pred)
-
+        # if self.debug:  # Print masks if debug is True
+        #     logger.info(f"DEBUG Masks Encoder (collated_masks_enc): {collated_masks_enc}")
+        #     logger.info(f"DEBUG Masks Predictor (collated_masks_pred): {collated_masks_pred}")
+        #     logger.info(f"DEBUG this is the collated batch size:  {batch_size}")
         return collated_batch, collated_masks_enc, collated_masks_pred
 
 
@@ -77,10 +82,12 @@ class _MaskGenerator(object):
         npred=1,
         max_context_frames_ratio=1.0,
         max_keep=None,
+        debug=False
     ):
         super(_MaskGenerator, self).__init__()
         if not isinstance(crop_size, tuple):
             crop_size = (crop_size, ) * 2
+        self.debug = debug
         self.crop_size = crop_size
         self.height, self.width = crop_size[0] // spatial_patch_size, crop_size[1] // spatial_patch_size
         self.duration = num_frames // temporal_patch_size
@@ -111,16 +118,22 @@ class _MaskGenerator(object):
         aspect_ratio_scale
     ):
         # -- Sample temporal block mask scale
-        _rand = torch.rand(1, generator=generator).item()
+        _rand = torch.rand(1, generator=generator).item() # random number between 0 and 1
         min_t, max_t = temporal_scale
         temporal_mask_scale = min_t + _rand * (max_t - min_t)
         t = max(1, int(self.duration * temporal_mask_scale))
+        # if self.debug:
+        #     logger.info(f"DEBUG this is the temporal mask scale: {temporal_mask_scale}")
+        #     logger.info(f"DEBUG this is the temporal mask size: {t}")
 
         # -- Sample spatial block mask scale
         _rand = torch.rand(1, generator=generator).item()
         min_s, max_s = spatial_scale
         spatial_mask_scale = min_s + _rand * (max_s - min_s)
-        spatial_num_keep = int(self.height * self.width * spatial_mask_scale)
+        spatial_num_keep = int(self.height * self.width * spatial_mask_scale) # number of patches to keep
+        # if self.debug:
+        #     logger.info(f"DEBUG this is the spatial mask scale: {spatial_mask_scale}")
+        #     logger.info(f"DEBUG this is the spatial mask size: {spatial_num_keep}")
 
         # -- Sample block aspect-ratio
         _rand = torch.rand(1, generator=generator).item()
@@ -143,13 +156,16 @@ class _MaskGenerator(object):
 
         mask = torch.ones((self.duration, self.height, self.width), dtype=torch.int32)
         mask[start:start+t, top:top+h, left:left+w] = 0
+        
+        
 
         # Context mask will only span the first X frames
         # (X=self.max_context_frames)
         if self.max_context_duration < self.duration:
             mask[self.max_context_duration:, :, :] = 0
-
+        # logger.info(f"DEBUG this is the mask size: {mask.size()}")
         # --
+
         return mask
 
     def __call__(self, batch_size):
@@ -168,21 +184,32 @@ class _MaskGenerator(object):
             spatial_scale=self.spatial_pred_mask_scale,
             aspect_ratio_scale=self.aspect_ratio,
         )
-
         collated_masks_pred, collated_masks_enc = [], []
         min_keep_enc = min_keep_pred = self.duration * self.height * self.width
+        total_patches = self.duration * self.height * self.width  # Total number of patches (1568)
+
+        # if self.debug:
+        #     logger.info(f"DEBUG this is the p_size: {p_size}")
+
+        #     logger.info(f"DEBUG this is the total number of expected patches: {total_patches}")
         for _ in range(batch_size):
 
             empty_context = True
             while empty_context:
 
-                mask_e = torch.ones((self.duration, self.height, self.width), dtype=torch.int32)
-                for _ in range(self.npred):
+                mask_e = torch.ones((self.duration, self.height, self.width), dtype=torch.int32) # 8, 14, 14
+                # if self.debug:
+                #     logger.info(f"DEBUG this is the mask_e size: {mask_e.size()}")
+                for _ in range(self.npred): #npred is number of blocks within each different mask.
                     mask_e *= self._sample_block_mask(p_size)
                 mask_e = mask_e.flatten()
 
                 mask_p = torch.argwhere(mask_e == 0).squeeze()
                 mask_e = torch.nonzero(mask_e).squeeze()
+
+                # if self.debug:
+                #     logger.info(f"DEBUG this is the mask_e size: {mask_e.size()}")
+                #     logger.info(f"DEBUG this is the mask_p size: {mask_p.size()}")
 
                 empty_context = len(mask_e) == 0
                 if not empty_context:
@@ -190,14 +217,27 @@ class _MaskGenerator(object):
                     min_keep_enc = min(min_keep_enc, len(mask_e))
                     collated_masks_pred.append(mask_p)
                     collated_masks_enc.append(mask_e)
+        # if self.debug:
+        #     logger.info(f"DEBUG this is the length of masks within mask enc{[length for length in [mask.size(0) for mask in collated_masks_enc]]}")
+        #     logger.info(f"DEBUG this is the length of masks within mask pred{[length for length in [mask.size(0) for mask in collated_masks_pred]]}")
 
         if self.max_keep is not None:
             min_keep_enc = min(min_keep_enc, self.max_keep)
 
-        collated_masks_pred = [cm[:min_keep_pred] for cm in collated_masks_pred]
+        # if self.debug:    
+        #     logger.info(f"DEBUG this is the min keep enc size: {min_keep_enc}")
+        #     logger.info(f"DEBUG this is the min keep pred size: {min_keep_pred}")
+
+        collated_masks_pred = [collated_masks_pred[0].clone() for _ in range(batch_size)]
         collated_masks_pred = torch.utils.data.default_collate(collated_masks_pred)
         # --
-        collated_masks_enc = [cm[:min_keep_enc] for cm in collated_masks_enc]
+        collated_masks_enc = [collated_masks_enc[0].clone() for _ in range(batch_size)]
         collated_masks_enc = torch.utils.data.default_collate(collated_masks_enc)
+
+        # if self.debug:
+        #     logger.info(f"DEBUG this is the collated masks enc size: {collated_masks_enc.size()}")
+        #     logger.info(f"DEBUG this is the collated masks pred size: {collated_masks_pred.size()} \n")
+
+
 
         return collated_masks_enc, collated_masks_pred

@@ -117,7 +117,7 @@ class VideoTransform(object):
 
 def tensor_normalize(tensor, mean, std):
     """
-    Normalize a given tensor by subtracting the mean and dividing the std.
+    Normalize a given tensor by subtracting the mean and dividing cdthe std.
     Args:
         tensor (tensor): tensor to normalize.
         mean (tensor or list): mean value to subtract.

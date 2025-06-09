@@ -1,0 +1,93 @@
+app: vjepa
+nodes: 16
+tasks_per_node: 8
+data:
+  batch_size: 12
+  clip_duration: null
+  crop_size: 224
+  dataset_type: MriDataset
+  datasets:
+  - /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1_mri/pretrain_maskfix1_mri.csv
+  decode_one_clip: true
+  num_clips: 1 
+  num_frames: 16 # num_slices
+  tubelet_size: 2
+  sampling_rate: 2 # Gap between slices
+  crop_size: 224
+  patch_size: 16
+  pin_mem: true
+  num_workers: 4
+  filter_short_videos: false
+  clip_duration: null
+data_aug:
+  auto_augment: false
+  motion_shift: false
+  random_resize_aspect_ratio:
+  - 0.75
+  - 1.35
+  random_resize_scale:
+  - 0.7
+  - 1.0
+  reprob: 0.0
+logging:
+  folder: /media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_mri
+  write_tag: maskfix1_mri_vittiny_trial5_samemaskwithinbatch
+  project: voxel-jepa-pretraining # Don't change this
+  run_name: a6000 maskfix1_mri_vittiny_trial5_samemaskwithinbatch # Please change every time before running, this is the name for wandb run file
+loss:
+  loss_exp: 1.0
+  reg_coeff: 0.0
+mask:
+- aspect_ratio:
+  - 1
+  - 1
+  max_keep: null
+  max_temporal_keep: 1.0
+  num_blocks: 8
+  spatial_scale:
+  - 0.15
+  - 0.15
+  temporal_scale:
+  - 1.0
+  - 1.0
+- aspect_ratio:
+  - 1
+  - 1
+  max_keep: null
+  max_temporal_keep: 1.0
+  num_blocks: 8
+  spatial_scale:
+  - 0.15
+  - 0.15
+  temporal_scale:
+  - 1.0
+  - 1.0
+meta:
+  dtype: bfloat16
+  eval_freq: 5
+  load_checkpoint: false
+  read_checkpoint: /local_data/sean_hasitha/sean/VJEPA/jepa/vitl16.pth.tar
+  seed: 234
+  use_sdpa: true
+model:
+  model_name: vit_tiny
+  pred_depth: 12
+  pred_embed_dim: 384
+  uniform_power: true
+  use_mask_tokens: true
+  zero_init_mask_tokens: true
+optimization:
+  clip_grad: 10.0
+  ema:
+  - 0.998
+  - 1.0
+  epochs: 150
+  final_lr: 1.0e-06
+  final_weight_decay: 0.4
+  ipe: 1085
+  ipe_scale: 1.25
+  lr: 0.000625
+  start_lr: 0.001
+  warmup: 40
+  weight_decay: 0.04
+

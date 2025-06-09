@@ -11,11 +11,18 @@ import torch
 import torch.distributed as dist
 
 from logging import getLogger
+### SEAN : Added to check if the port is available
+import socket
 
+def is_port_available(port):
+    """Check if a port is available."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) != 0
+###
 logger = getLogger()
 
 
-def init_distributed(port=37123, rank_and_world_size=(None, None)):
+def init_distributed(port=37125, rank_and_world_size=(None, None)):
 
     if dist.is_available() and dist.is_initialized():
         return dist.get_world_size(), dist.get_rank()
@@ -32,6 +39,11 @@ def init_distributed(port=37123, rank_and_world_size=(None, None)):
             logger.info('SLURM vars not set (distributed training not available)')
             world_size, rank = 1, 0
             return world_size, rank
+
+    # SEAN : Find an available port
+    while not is_port_available(port):
+        logger.info(f"Port {port} is in use. Trying the next port...")
+        port += 1    
 
     try:
         os.environ['MASTER_PORT'] = str(port)

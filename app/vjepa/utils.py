@@ -106,6 +106,7 @@ def init_video_model(
         uniform_power=uniform_power,
         use_sdpa=use_sdpa,
     )
+    print(f"pred_embed_dim: {pred_embed_dim}")
     encoder = MultiMaskWrapper(encoder)
     predictor = vit_pred.__dict__['vit_predictor'](
         img_size=crop_size,
