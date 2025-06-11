@@ -142,7 +142,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
     motion_shift = cfgs_data_aug.get('motion_shift', False)
     reprob = cfgs_data_aug.get('reprob', 0.)
     use_aa = cfgs_data_aug.get('auto_augment', False)
-
+    tensor_normalize = cfgs_data_aug.get('normalize', ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225))) #use Imagenet if nor provided
     # -- LOSS
     cfgs_loss = args.get('loss')
     loss_exp = cfgs_loss.get('loss_exp')
@@ -278,7 +278,8 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
         reprob=reprob,
         auto_augment=use_aa,
         motion_shift=motion_shift,
-        crop_size=crop_size)
+        crop_size=crop_size,
+        normalize=tensor_normalize)
 
     # -- init data-loaders/samplers
     (unsupervised_loader,

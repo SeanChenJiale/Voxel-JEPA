@@ -111,7 +111,18 @@ def main(args_eval, resume_preempt=False, debug=False):
     final_lr = args_opt.get('final_lr')
     warmup = args_opt.get('warmup')
     use_bfloat16 = args_opt.get('use_bfloat16')
-
+    # -- DATA AUGS
+    cfgs_data_aug = args_eval.get('data_aug')
+    ar_range = cfgs_data_aug.get('random_resize_aspect_ratio', [3/4, 4/3])
+    rr_scale = cfgs_data_aug.get('random_resize_scale', [0.3, 1.0])
+    motion_shift = cfgs_data_aug.get('motion_shift', False)
+    reprob = cfgs_data_aug.get('reprob', 0.)
+    use_aa = cfgs_data_aug.get('auto_augment', False)
+    tensor_normalize = cfgs_data_aug.get('normalize', ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225))) #use Imagenet if nor provided
+    data_aug_dict = dict(ar_range=ar_range,
+                    rr_scale=rr_scale,
+                    motion_shift=motion_shift,
+                    tensor_normalize=tensor_normalize)
     # -- EXPERIMENT-ID/TAG (optional)
     resume_checkpoint = args_eval.get('resume_checkpoint', False) or resume_preempt
     eval_tag = args_eval.get('tag', None)
@@ -212,7 +223,8 @@ def main(args_eval, resume_preempt=False, debug=False):
         batch_size=batch_size,
         world_size=world_size,
         rank=rank,
-        training=True)
+        training=True,
+        data_aug_dict=data_aug_dict)
     val_loader = make_dataloader(
         dataset_type=dataset_type,
         root_path=val_data_path,
@@ -226,7 +238,8 @@ def main(args_eval, resume_preempt=False, debug=False):
         batch_size=batch_size,
         world_size=world_size,
         rank=rank,
-        training=False)
+        training=False,
+        data_aug_dict=data_aug_dict)
     ipe = len(train_loader)
     logger.info(f'Dataloader created... iterations per epoch: {ipe}')
 
@@ -463,6 +476,7 @@ def make_dataloader(
     batch_size,
     world_size,
     rank,
+    data_aug_dict,
     dataset_type='VideoDataset',
     resolution=224,
     frames_per_clip=16,
@@ -475,17 +489,21 @@ def make_dataloader(
     num_workers=12,
     subset_file=None
 ):
+    ar_range = data_aug_dict['ar_range']
+    rr_scale = data_aug_dict['rr_scale']
+    tensor_normalize = data_aug_dict['tensor_normalize']
     # Make Video Transforms
     transform = make_transforms(
         training=training,
         num_views_per_clip=num_views_per_segment,
         random_horizontal_flip=False,
-        random_resize_aspect_ratio=(0.75, 4/3),
-        random_resize_scale=(0.08, 1.0),
+        random_resize_aspect_ratio=ar_range,
+        random_resize_scale=rr_scale,
         reprob=0.25,
         auto_augment=True,
         motion_shift=False,
         crop_size=resolution,
+        normalize=tensor_normalize
     )
 
     data_loader, _ = init_data(

@@ -25,12 +25,19 @@ data_aug:
   - 1.0
   - 1.0
   reprob: 0.0
-  normalize: ((0.5,0.5,0.5),(0.5,0.5,0.5))
+  normalize:
+  - - 0.096
+    - 0.096
+    - 0.096
+  - - 0.230
+    - 0.230
+    - 0.230
+
 logging:
   folder: /media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny
-  write_tag: vittiny_maskfix4_notransform
+  write_tag: vittiny_maskfix5_colour_norm
   project: voxel-jepa-pretraining # Don't change this
-  run_name: a6000 vittiny_maskfix4_notransform # Please change every time before running, this is the name for wandb run file
+  run_name: a6000 vittiny_maskfix5_colour_norm # Please change every time before running, this is the name for wandb run file
 
 loss:
   loss_exp: 1.0
