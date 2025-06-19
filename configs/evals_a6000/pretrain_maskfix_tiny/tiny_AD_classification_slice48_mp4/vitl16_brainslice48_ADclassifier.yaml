@@ -37,6 +37,7 @@ pretrain:
   folder: /media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny
   checkpoint: vittiny_maskfix1-latest.pth.tar  # name of pretrained model file inside folder
   write_tag: ADclassifier_vittiny
+
 logging:
   project: voxel-jepa-fine-tuning # Don't change this
   run_name: ADclassifier_vittiny # Please change every time before running, this is the name for wandb run file

@@ -7,7 +7,7 @@ import os
 
 
 
-def plot_mask_visualization(csv_path):
+def plot_mask_visualization(csv_path,mask_csv_and_vis_list=["masks_csv","masks_visualization"]):
     def create_directory(mask_dir):
         """Create a directory for storing the visualizations based on the mask directory.
         outputs a directory path that is the parent directory of the mask directory with a new name."""
@@ -42,12 +42,13 @@ def plot_mask_visualization(csv_path):
         """Extract the iteration number from the CSV file path."""
         itr_str = csv_path.split("masks_itr_")[-1].split(".csv")[0]
         return int(itr_str)
-    def create_epoch_directory(csv_path):
+    def create_epoch_directory(csv_path,mask_csv_and_vis_list=mask_csv_and_vis_list):
         """Create a directory for storing the visualizations based on the CSV file path."""
         root_output_dir = os.path.dirname(csv_path)
-        
+        masks_csv_str = mask_csv_and_vis_list[0]
+        masks_vis_str = mask_csv_and_vis_list[1]
         #replace masks_csv with masks_visualization
-        output_base_dir = root_output_dir.replace("masks_csv", "masks_visualization")
+        output_base_dir = root_output_dir.replace(masks_csv_str, masks_vis_str)
 
         # print(f"Creating directory: {output_base_dir}")
         if not os.path.exists(output_base_dir):

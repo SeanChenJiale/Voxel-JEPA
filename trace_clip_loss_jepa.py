@@ -60,6 +60,9 @@ def retrieve_patch_index_list(csv_path,masknumber):
     patch_index_list = [item for sublist in patch_index_list for item in sublist]
     return patch_index_list
 
+def check_create_dir(dir_to_create):
+    if not os.path.exists(dir_to_create):
+        os.makedirs(dir_to_create, exist_ok=True)
 
 def plot(hi_output,zi_output,hi_zi_diff_output,hi_zi_add_output,output_png_path,plot_title):
 
@@ -128,42 +131,93 @@ def get_clip_index_from_csv(base_dir,epoch_idx,itr_idx,clip_index,masks_csv_str)
     curr_clip_list = ast.literal_eval(curr_clip_str)
     return curr_clip_list[clip_index] # an integer 
 
-def main(base_dir,epoch_itr_list,mask_idx_list,clip_list, mask_csv_and_vis_list=["masks_csv","masks_visualization"],pred_dim_index = 0,clip_index = 0):
+def get_epoch_itr_from_clip_trace_idx(base_dir,epoch_list,clip_trace_idx,masks_csv_str):
+    epoch_idx_tracer_list = []
+    for epoch in epoch_list:
+        
+        file_path = os.path.join(base_dir, f"{masks_csv_str}/epoch_{epoch}", "clip_index_list.csv")
+        if not os.path.exists(file_path):
+            print(f"File not found: {file_path}")
+            continue
+
+        clip_in_itr_df = pd.read_csv(file_path, sep="\t")
+        # print("Columns in DataFrame:", clip_in_itr_df.columns)
+
+        if ' clip_index_list' not in clip_in_itr_df.columns:
+            print("Column 'clip_index_list' not found in DataFrame.")
+            return
+
+        # Convert the 'clip_index_list' column to actual lists
+        clip_in_itr_df[' clip_index_list'] = clip_in_itr_df[' clip_index_list'].apply(ast.literal_eval)
+
+        # Filter rows where clip_trace_idx matches exactly in the clip_index_list
+        result_itr = clip_in_itr_df.loc[clip_in_itr_df[' clip_index_list'].apply(lambda x: clip_trace_idx in x), 'itr']
+        
+        
+        # Extract the value directly
+        if not result_itr.empty:
+            itr_value = result_itr.iloc[0]  # Get the first value directly
+            # print(itr_value)
+            clip_idx_in_itr = clip_in_itr_df.iloc[itr_value][' clip_index_list'].index(clip_trace_idx)
+            epoch_idx_tracer_list.append([epoch,itr_value,clip_idx_in_itr])
+        else:
+            print("No match found.")
+
+    return epoch_idx_tracer_list
+
+def main(base_dir,epoch,itr,mask_idx_list,clip_list, mask_csv_and_vis_list=["masks_csv","masks_visualization"],pred_dim_index = 0,clip_index = 0,clip_trace_folder = ""):
     masks_csv_str = mask_csv_and_vis_list[0]
     masks_vis_str = mask_csv_and_vis_list[1]
-    for epoch,itr in epoch_itr_list:
-        curr_training_clip_index = get_clip_index_from_csv(base_dir,epoch,itr,clip_index,masks_csv_str)
-        plot_title = clip_list[curr_training_clip_index]
-        for mask_idx in mask_idx_list:
-            hi_path = os.path.join(base_dir,masks_csv_str,f"epoch_{epoch}/iter{itr}_hi_mask{mask_idx}.pt")
-            zi_path = os.path.join(base_dir,masks_csv_str,f"epoch_{epoch}/iter{itr}_zi_mask{mask_idx}.pt")
-            csv_path = os.path.join(base_dir,masks_csv_str,f"epoch_{epoch}/masks_itr_{itr}.csv")
-            patch_index_list = retrieve_patch_index_list(csv_path,mask_idx)
+    curr_training_clip_index = get_clip_index_from_csv(base_dir,epoch,itr,clip_index,masks_csv_str)
+    plot_title = f"epoch{epoch}_dim{pred_dim_index}_itr{itr}_{clip_list[curr_training_clip_index]}"
+    
+    for mask_idx in mask_idx_list:
+        output_png_path = os.path.join(base_dir,masks_vis_str,clip_trace_folder,f"dim{pred_dim_index}",f"epoch_{epoch}_masks_itr_{itr}_clip{clip_index}_dim{pred_dim_index}_mask{mask_idx}.png")
+        check_create_dir(os.path.join(base_dir,masks_vis_str,clip_trace_folder,f"dim{pred_dim_index}"))
+        hi_path = os.path.join(base_dir,masks_csv_str,f"epoch_{epoch}/iter{itr}_hi_mask{mask_idx}.pt")
+        zi_path = os.path.join(base_dir,masks_csv_str,f"epoch_{epoch}/iter{itr}_zi_mask{mask_idx}.pt")
+        csv_path = os.path.join(base_dir,masks_csv_str,f"epoch_{epoch}/masks_itr_{itr}.csv")
+        patch_index_list = retrieve_patch_index_list(csv_path,mask_idx)
 
-            hi_output,zi_output,hi_zi_diff_output,hi_zi_add_output,pred_dim_index = format_hi_zi_to_list(hi_path,zi_path,patch_index_list,pred_dim_index = pred_dim_index, clip_index = clip_index)
-            output_png_path = os.path.join(base_dir,masks_vis_str,f"epoch_{epoch}/masks_itr_{itr}/clip{clip_index}_dim{pred_dim_index}_mask{mask_idx}.png")
-            if os.path.exists(output_png_path):
-                print(f"visualization {output_png_path} exists, skipping")
-                pass
-            else:
-                plot(hi_output,zi_output,hi_zi_diff_output,hi_zi_add_output,output_png_path,plot_title)
+        hi_output,zi_output,hi_zi_diff_output,hi_zi_add_output,pred_dim_index = format_hi_zi_to_list(hi_path,zi_path,patch_index_list,pred_dim_index = pred_dim_index, clip_index = clip_index)
+        
+        if os.path.exists(output_png_path):
+            print(f"visualization {output_png_path} exists, skipping")
+            pass
+        else:
+            plot(hi_output,zi_output,hi_zi_diff_output,hi_zi_add_output,output_png_path,plot_title)
+    print('found match')
 
 if __name__ == "__main__":       
     base_dir = "/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny"
-    pretraining_csv_path = "/media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1/pretrain_maskfix1.csv"
+    pretraining_csv_path = "/media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1/pretrain2.csv"
     cliplist_df = pd.read_csv(pretraining_csv_path,sep=' ', header=None)
     cliplist = cliplist_df.iloc[:, 0].tolist()
-    epoch_itr_list =[[100,1314]]  
-    mask_csv_and_vis_list = ["masks_csv","masks_visualization_11"]
+    epoch_list = [i for i in range(90,101)]
+    mask_csv_and_vis_list = ["masks_csv","masks_tracer_11"]
     total_multiblock_num = 8
     mask_idx_list = [ _ for _ in range(total_multiblock_num)]
-    pred_dim_index_list = [1] #[_ for _ in range(192)]
-    clip_index_list = [ _ for _ in range(12)]
-    
-    for epoch,itr in epoch_itr_list:
-        plot_mask_visualization(f"{base_dir}/{mask_csv_and_vis_list[0]}/epoch_{epoch}/masks_itr_{itr}.csv",mask_csv_and_vis_list=mask_csv_and_vis_list)
-    for clip_index in clip_index_list:
+    pred_dim_index_list =  [ _ for _ in range(192)]
+    # clip_index_list = [ _ for _ in range(12)]
+    clip_trace_str = "/media/backup_16TB/sean/Monai/BrainSlice48_224_224/NACC_T1_Volume_mri/1.2.840.113619.2.408.5282380.4561270.27867.1528128569.787/Coronal.mp4"
+    clip_trace_folder = "NACC_T1_Volume_mri_1_2_840_113619_2_408_5282380_4561270_27867_1528128569_787_Coronal_mp4"
+    output_folder = os.path.join(base_dir,mask_csv_and_vis_list[1],clip_trace_folder)
+    check_create_dir(output_folder)
+    # Assuming cliplist_df is your DataFrame and clip_trace_str is the string to match
+    matched_row = cliplist_df.loc[cliplist_df.iloc[:, 0] == clip_trace_str]
+
+    if not matched_row.empty:
+        print("Exact match found:")
+        print(matched_row.index.tolist()[0])
+        clip_trace_idx = matched_row.index.tolist()[0]
+    else:
+        print("No exact match found.")
+        
+    epoch_itr_clip_idx_list = get_epoch_itr_from_clip_trace_idx(base_dir,epoch_list,clip_trace_idx,masks_csv_str = mask_csv_and_vis_list[0])
+    print(f"this is  {epoch_itr_clip_idx_list}")
+    for epoch,itr,clip_index in epoch_itr_clip_idx_list:
+        # plot_mask_visualization(f"{base_dir}/{mask_csv_and_vis_list[0]}/epoch_{epoch}/masks_itr_{itr}.csv",mask_csv_and_vis_list=mask_csv_and_vis_list)
         for pred_dim_index in pred_dim_index_list:
-            main(base_dir,epoch_itr_list,mask_idx_list,cliplist,pred_dim_index=pred_dim_index,clip_index=clip_index,mask_csv_and_vis_list=mask_csv_and_vis_list)
+            main(base_dir,epoch,itr,mask_idx_list,cliplist,pred_dim_index=pred_dim_index,clip_index=clip_index,mask_csv_and_vis_list=mask_csv_and_vis_list,clip_trace_folder=clip_trace_folder)
 
 

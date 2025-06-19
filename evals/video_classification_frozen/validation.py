@@ -145,6 +145,24 @@ def main(args_eval, resume_preempt=False, debug=False):
     eval_duration = args_pretrain.get('clip_duration', None)
     eval_num_views_per_segment = args_data.get('num_views_per_segment', 1)
 
+    # -- DATA AUGS
+    cfgs_data_aug = args_eval.get('data_aug',None)
+    if cfgs_data_aug is not None:
+        ar_range = cfgs_data_aug.get('random_resize_aspect_ratio', [3/4, 4/3])
+        rr_scale = cfgs_data_aug.get('random_resize_scale', [0.3, 1.0])
+        motion_shift = cfgs_data_aug.get('motion_shift', False)
+        reprob = cfgs_data_aug.get('reprob', 0.)
+        use_aa = cfgs_data_aug.get('auto_augment', False)
+        tensor_normalize = cfgs_data_aug.get('normalize', ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225))) #use Imagenet if nor provided
+        data_aug_dict = dict(ar_range=ar_range,
+                        rr_scale=rr_scale,
+                        motion_shift=motion_shift,
+                        tensor_normalize=tensor_normalize)
+    else:
+        data_aug_dict = dict(ar_range=[3/4, 4/3],
+                        rr_scale=[0.3, 1.0],
+                        motion_shift=False,
+                        tensor_normalize=((0.485, 0.456, 0.406),(0.229, 0.224, 0.225)))
     # -- OPTIMIZATION
     args_opt = args_eval.get('optimization')
     resolution = args_opt.get('resolution', 224)
@@ -248,11 +266,12 @@ def main(args_eval, resume_preempt=False, debug=False):
         world_size=world_size,
         rank=rank,
         training=False,
-        debug=debug)
+        debug=debug,
+        data_aug_dict=data_aug_dict)
 
 
     # TRAIN LOOP
-    writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name, 'eval_results.csv'))
+    writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}eval_results.csv'))
     writer.writerow(["Label", "Prediction", "Fname"])
     for epoch in range(1):
         val_acc = run_one_epoch(
@@ -451,6 +470,7 @@ def make_dataloader(
     batch_size,
     world_size,
     rank,
+    data_aug_dict,
     dataset_type='VideoDataset',
     resolution=224,
     frames_per_clip=16,
@@ -464,6 +484,9 @@ def make_dataloader(
     subset_file=None,
     debug=False
 ):
+    ar_range = data_aug_dict['ar_range']
+    rr_scale = data_aug_dict['rr_scale']
+    tensor_normalize = data_aug_dict['tensor_normalize']
     # Make Video Transforms
     transform = make_transforms(
         training=training,
@@ -475,6 +498,7 @@ def make_dataloader(
         auto_augment=True,
         motion_shift=False,
         crop_size=resolution,
+        normalize=tensor_normalize
     )
 
     data_loader, _ = init_data(

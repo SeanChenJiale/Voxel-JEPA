@@ -104,6 +104,7 @@ def main(args_eval, resume_preempt=False, debug=False):
     val_data_path = [args_data.get('dataset_val')]
     dataset_type = args_data.get('dataset_type', 'VideoDataset')
     num_classes = args_data.get('num_classes')
+    num_workers = args_data.get('num_workers', 1)
     eval_num_segments = args_data.get('num_segments', 1)
     eval_frames_per_clip = args_data.get('frames_per_clip', 16)
     eval_frame_step = args_pretrain.get('frame_step', 4)

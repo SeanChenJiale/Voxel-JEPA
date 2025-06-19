@@ -81,7 +81,7 @@ def process_main(rank, fname, world_size, devices, plotter,debug,save_mask): #de
     ###New by Hasitha
     if rank == 0 and plotter == 'wandb':
         wandb.init(
-            # entity="hbgallella",
+            entity="voxel-jepa",
             project=params['logging'].get('project', 'voxel-jepa-pretraining'),
             config=params,
             name=params['logging'].get('run_name', 'voxel-jepa') 

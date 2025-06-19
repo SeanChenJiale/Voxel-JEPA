@@ -30,7 +30,7 @@ data_aug:
   - 1.0
   - 1.0
   random_resize_scale:
-  - 0.8
+  - 1.0
   - 1.0
   reprob: 0.0
   normalize:
@@ -52,12 +52,13 @@ pretrain:
   use_sdpa: true
   patch_size: 16
   folder: /media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny
-  checkpoint: vittiny_maskfix1-latest.pth.tar  # name of pretrained model file inside folder
-  write_tag: axisclassifier_vittiny_rnd
+  checkpoint: vittiny_maskfix11-latest.pth.tar  # name of pretrained model file inside folder
+  write_tag: axisclassifier_vittiny_11
+
 logging:
   project: voxel-jepa-fine-tuning # Don't change this
   run_name: axisclassifier_vittiny_rnd # Please change every time before running, this is the name for wandb run file
 
   ##todo run tomorrow 9th april.
-  #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/tiny_axis_classification_slice48_mp4/vitl16_brainslice48_axisclassifier.yaml --devices cuda:0 cuda:1
+  #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/pretrain_maskfix_tiny/tiny_axis_classification_slice48_mp4/vitl16_brainslice48_axisclassifier_11.yaml --devices cuda:0 cuda:1
   

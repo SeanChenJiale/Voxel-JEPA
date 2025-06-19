@@ -398,10 +398,10 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
     # -- TRAINING LOOP
     for epoch in range(start_epoch, num_epochs):
         logger.info('Epoch %d' % (epoch + 1))
-        if debug:
-            mask_dir_path = os.path.join(args.get('logging').get('folder'),'masks_csv')
-            epoch_dir_path = os.path.join(mask_dir_path, f"epoch_{epoch+1}")
-            os.makedirs(epoch_dir_path, exist_ok=True)
+        # if debug:
+        #     mask_dir_path = os.path.join(args.get('logging').get('folder'),'masks_csv')
+        #     epoch_dir_path = os.path.join(mask_dir_path, f"epoch_{epoch+1}")
+        #     os.makedirs(epoch_dir_path, exist_ok=True)
         if save_mask:
             epoch_dir_path = os.path.join(mask_dir_path, f"epoch_{epoch+1}")
             os.makedirs(epoch_dir_path, exist_ok=True)
@@ -475,8 +475,8 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                 
             clips, masks_enc, masks_pred = load_clips()
             
-            if debug:
-                logger.info(f"index of clip, {udata[4]}") # udata is the __getitem__ base function in video_dataset.py 
+            # if debug:
+            #     logger.info(f"index of clip, {udata[4]}") # udata is the __getitem__ base function in video_dataset.py 
             if save_mask:
                 epoch_dir_path = os.path.join(mask_dir_path, f"epoch_{epoch+1}")
                 os.makedirs(epoch_dir_path, exist_ok=True)
@@ -525,17 +525,17 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                     with torch.no_grad():
                         h = target_encoder(c)
                         h = F.layer_norm(h, (h.size(-1),))  # normalize over feature-dim  [B, N, D]
-                        if debug:
-                            logger.info(f"Forward_target: h.shape is {h.shape} BEFORE applying masking")
+                        # if debug:
+                        #     logger.info(f"Forward_target: h.shape is {h.shape} BEFORE applying masking")
                             # logger.info(f"{h[0]}") #print first clip
                             # # Save the tensor to a file
                             # torch.save(h[0], '/media/backup_16TB/sean/VJEPA/a6000_output/debug/tensor_h_0.pt')
-                            logger.info(f"sample of masks_pred[0] {masks_pred[0].size()}")
+                            # logger.info(f"sample of masks_pred[0] {masks_pred[0].size()}")
 
                         # -- create targets (masked regions of h)
                         h = apply_masks(h, masks_pred, concat=False)
-                        if debug:
-                            logger.info(f"h has len {len(h)} after masking and :{[h_item.shape for h_item in h]}")
+                        # if debug:
+                        #     logger.info(f"h has len {len(h)} after masking and :{[h_item.shape for h_item in h]}")
                             # logger.info(f"{h[0][0]}") #print first maskblock of first clip
                             # # Save the tensor to a file
                             # torch.save(h[0][0], '/media/backup_16TB/sean/VJEPA/a6000_output/debug/tensor_h_0_0.pt')
@@ -547,13 +547,13 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                     mask-pred.
                     """
                     z = encoder(c, masks_enc)
-                    if debug:
-                        logger.info("Forward_context: this is the shape of the clips after encoder")
-                        logger.info(f"{[zclip.size() for zclip in z]}")
+                    # if debug:
+                    #     logger.info("Forward_context: this is the shape of the clips after encoder")
+                    #     logger.info(f"{[zclip.size() for zclip in z]}")
                     z = predictor(z, h, masks_enc, masks_pred)
-                    if debug:
-                        logger.info("Forward_context: this is the shape of the clips after predictor")
-                        logger.info(f"{[zclip.size() for zclip in z]}")
+                    # if debug:
+                    #     logger.info("Forward_context: this is the shape of the clips after predictor")
+                    #     logger.info(f"{[zclip.size() for zclip in z]}")
                     return z
 
                 def loss_fn(z, h):
