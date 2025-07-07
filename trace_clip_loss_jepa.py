@@ -189,18 +189,18 @@ def main(base_dir,epoch,itr,mask_idx_list,clip_list, mask_csv_and_vis_list=["mas
     print('found match')
 
 if __name__ == "__main__":       
-    base_dir = "/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny"
-    pretraining_csv_path = "/media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1/pretrain2.csv"
+    base_dir = "/media/backup_16TB/sean/VJEPA_original/jepa/a_k400_border_output"
+    pretraining_csv_path = "/media/backup_16TB/sean/VJEPA_original/jepa/configs/pretrain/k400/k400_full_border.csv"
     cliplist_df = pd.read_csv(pretraining_csv_path,sep=' ', header=None)
     cliplist = cliplist_df.iloc[:, 0].tolist()
     epoch_list = [i for i in range(90,101)]
-    mask_csv_and_vis_list = ["masks_csv","masks_tracer_11"]
-    total_multiblock_num = 8
+    mask_csv_and_vis_list = ["masks_csv","clip_trace_visualization_fix14"]
+    total_multiblock_num = 2
     mask_idx_list = [ _ for _ in range(total_multiblock_num)]
-    pred_dim_index_list =  [ _ for _ in range(192)]
+    pred_dim_index_list =  [ _ for _ in range(2)]
     # clip_index_list = [ _ for _ in range(12)]
-    clip_trace_str = "/media/backup_16TB/sean/Monai/BrainSlice48_224_224/NACC_T1_Volume_mri/1.2.840.113619.2.408.5282380.4561270.27867.1528128569.787/Coronal.mp4"
-    clip_trace_folder = "NACC_T1_Volume_mri_1_2_840_113619_2_408_5282380_4561270_27867_1528128569_787_Coronal_mp4"
+    clip_trace_str = "/media/backup_16TB/sean/K400/k400_black_border/zXfpajR_Z28.mp4"
+    clip_trace_folder = "zXfpajR_Z28.mp4"
     output_folder = os.path.join(base_dir,mask_csv_and_vis_list[1],clip_trace_folder)
     check_create_dir(output_folder)
     # Assuming cliplist_df is your DataFrame and clip_trace_str is the string to match
@@ -210,14 +210,14 @@ if __name__ == "__main__":
         print("Exact match found:")
         print(matched_row.index.tolist()[0])
         clip_trace_idx = matched_row.index.tolist()[0]
+        epoch_itr_clip_idx_list = get_epoch_itr_from_clip_trace_idx(base_dir,epoch_list,clip_trace_idx,masks_csv_str = mask_csv_and_vis_list[0])
+        print(f"this is  {epoch_itr_clip_idx_list}")
+        for epoch,itr,clip_index in epoch_itr_clip_idx_list:
+            # plot_mask_visualization(f"{base_dir}/{mask_csv_and_vis_list[0]}/epoch_{epoch}/masks_itr_{itr}.csv",mask_csv_and_vis_list=mask_csv_and_vis_list)
+            for pred_dim_index in pred_dim_index_list:
+                main(base_dir,epoch,itr,mask_idx_list,cliplist,pred_dim_index=pred_dim_index,clip_index=clip_index,mask_csv_and_vis_list=mask_csv_and_vis_list,clip_trace_folder=clip_trace_folder)
+
     else:
         print("No exact match found.")
         
-    epoch_itr_clip_idx_list = get_epoch_itr_from_clip_trace_idx(base_dir,epoch_list,clip_trace_idx,masks_csv_str = mask_csv_and_vis_list[0])
-    print(f"this is  {epoch_itr_clip_idx_list}")
-    for epoch,itr,clip_index in epoch_itr_clip_idx_list:
-        # plot_mask_visualization(f"{base_dir}/{mask_csv_and_vis_list[0]}/epoch_{epoch}/masks_itr_{itr}.csv",mask_csv_and_vis_list=mask_csv_and_vis_list)
-        for pred_dim_index in pred_dim_index_list:
-            main(base_dir,epoch,itr,mask_idx_list,cliplist,pred_dim_index=pred_dim_index,clip_index=clip_index,mask_csv_and_vis_list=mask_csv_and_vis_list,clip_trace_folder=clip_trace_folder)
-
 

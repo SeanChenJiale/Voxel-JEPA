@@ -33,13 +33,6 @@ data_aug:
   - 0.8
   - 1.0
   reprob: 0.0
-  normalize:
-  - - 0.096
-    - 0.096
-    - 0.096
-  - - 0.230
-    - 0.230
-    - 0.230
 pretrain:
   model_name: vit_tiny
   checkpoint_key: target_encoder

@@ -402,7 +402,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
         #     mask_dir_path = os.path.join(args.get('logging').get('folder'),'masks_csv')
         #     epoch_dir_path = os.path.join(mask_dir_path, f"epoch_{epoch+1}")
         #     os.makedirs(epoch_dir_path, exist_ok=True)
-        if save_mask:
+        if save_mask and rank == 0:
             epoch_dir_path = os.path.join(mask_dir_path, f"epoch_{epoch+1}")
             os.makedirs(epoch_dir_path, exist_ok=True)
             clip_index_list = []
@@ -477,7 +477,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
             
             # if debug:
             #     logger.info(f"index of clip, {udata[4]}") # udata is the __getitem__ base function in video_dataset.py 
-            if save_mask:
+            if save_mask and rank == 0:
                 epoch_dir_path = os.path.join(mask_dir_path, f"epoch_{epoch+1}")
                 os.makedirs(epoch_dir_path, exist_ok=True)
                 save_masks_to_csv(masks_enc, masks_pred, filename=os.path.join(epoch_dir_path,f"masks_itr_{itr}.csv"),logger=logger)
@@ -562,7 +562,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                     count = 0
                     for zi, hi in zip(z, h):
                         loss += torch.mean(torch.abs(zi - hi)**loss_exp) / loss_exp
-                        if save_mask:
+                        if save_mask and rank == 0:
                             # logger.info(f"epoch_dir_path is {epoch_dir_path}")
                             # logger.info(f"this is zi: {zi.size()} this is hi: {hi.size()}")
                             torch.save(zi, os.path.join(epoch_dir_path,f"iter{itr}_zi_mask{count}.pt"))
@@ -705,7 +705,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
             log_stats()
             assert not np.isnan(loss), 'loss is nan'
 
-        if save_mask:
+        if save_mask and rank == 0:
             with open(os.path.join(epoch_dir_path,"clip_index_list.csv"), "w") as file:
                 file.writelines("itr\t clip_index_list\n")
                 file.writelines(["\t".join(map(str, row)) + "\n" for row in clip_index_list])              

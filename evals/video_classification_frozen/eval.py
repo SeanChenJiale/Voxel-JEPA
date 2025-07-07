@@ -87,17 +87,23 @@ def main(args_eval, resume_preempt=False, debug=False):
     tubelet_size = args_pretrain.get('tubelet_size', 2)
     pretrain_frames_per_clip = args_pretrain.get('frames_per_clip', 1)
     # -- DATA AUGS
-    cfgs_data_aug = args_eval.get('data_aug')
-    ar_range = cfgs_data_aug.get('random_resize_aspect_ratio', [3/4, 4/3])
-    rr_scale = cfgs_data_aug.get('random_resize_scale', [0.3, 1.0])
-    motion_shift = cfgs_data_aug.get('motion_shift', False)
-    reprob = cfgs_data_aug.get('reprob', 0.)
-    use_aa = cfgs_data_aug.get('auto_augment', False)
-    tensor_normalize = cfgs_data_aug.get('normalize', ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225))) #use Imagenet if nor provided
-    data_aug_dict = dict(ar_range=ar_range,
-                    rr_scale=rr_scale,
-                    motion_shift=motion_shift,
-                    tensor_normalize=tensor_normalize)
+    cfgs_data_aug = args_eval.get('data_aug',None)
+    if cfgs_data_aug is not None:
+        ar_range = cfgs_data_aug.get('random_resize_aspect_ratio', [3/4, 4/3])
+        rr_scale = cfgs_data_aug.get('random_resize_scale', [0.3, 1.0])
+        motion_shift = cfgs_data_aug.get('motion_shift', False)
+        reprob = cfgs_data_aug.get('reprob', 0.)
+        use_aa = cfgs_data_aug.get('auto_augment', False)
+        tensor_normalize = cfgs_data_aug.get('normalize', ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225))) #use Imagenet if nor provided
+        data_aug_dict = dict(ar_range=ar_range,
+                        rr_scale=rr_scale,
+                        motion_shift=motion_shift,
+                        tensor_normalize=tensor_normalize)
+    else:
+        data_aug_dict = dict(ar_range=[3/4, 4/3],
+                        rr_scale=[0.3, 1.0],
+                        motion_shift=False,
+                        tensor_normalize=((0.485, 0.456, 0.406),(0.229, 0.224, 0.225)))
     # -- DATA
     args_data = args_eval.get('data')
     train_data_path = [args_data.get('dataset_train')]

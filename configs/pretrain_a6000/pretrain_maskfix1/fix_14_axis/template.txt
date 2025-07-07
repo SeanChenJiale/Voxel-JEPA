@@ -1,0 +1,3 @@
+python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1/fix_14_axis/pretrain_maskfix14_sagittal.yaml --devices cuda:1 | tee /media/backup_16TB/sean/VJEPA/a6000_output/fix14_zoom/sagittal_only/run.log
+
+python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1/fix_14_axis/pretrain_maskfix14_coronal.yaml --devices cuda:1 | tee /media/backup_16TB/sean/VJEPA/a6000_output/fix14_zoom/coronal_only/run.log

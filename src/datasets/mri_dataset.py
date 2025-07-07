@@ -110,16 +110,32 @@ class MRISliceDataset(torch.utils.data.Dataset):
             volume = np.transpose(volume, (1, 2, 0))
         elif axis == 1:
             volume = np.transpose(volume, (0, 2, 1))
-        else:
-            volume = volume  # Already in axis=2
         # Axis selection successfully done
 
         target_size = 224 # max(volume.shape[0], volume.shape[1])
-        pad_0 = ((target_size - volume.shape[0]) // 2, (target_size - volume.shape[0] + 1) // 2)
-        pad_1 = ((target_size - volume.shape[1]) // 2, (target_size - volume.shape[1] + 1) // 2)
-        volume = np.pad(volume, (pad_0, pad_1, (0, 0)), mode="constant")
 
-        non_black_indices = [i for i in range(volume.shape[2]) if np.any(volume[:, :, i] > 0)]
+        # Case 1: If volume.shape[0] > target_size or volume.shape[1] > target_size
+        if volume.shape[0] > target_size or volume.shape[1] > target_size:
+            # Calculate the center crop
+            start_0 = (volume.shape[0] - target_size) // 2
+            end_0 = start_0 + target_size
+            start_1 = (volume.shape[1] - target_size) // 2
+            end_1 = start_1 + target_size
+            volume = volume[start_0:end_0, start_1:end_1, :]
+            
+        if volume.shape[0] < target_size:    
+            pad_0 = ((target_size - volume.shape[0]) // 2, (target_size - volume.shape[0] + 1) // 2)
+        else:
+            pad_0 = (0,0)
+        if volume.shape[1] < target_size:    
+            pad_1 = ((target_size - volume.shape[1]) // 2, (target_size - volume.shape[1] + 1) // 2)
+        else:
+            pad_1 = (0,0)
+
+        volume = np.pad(volume, (pad_0, pad_1, (0,0)), mode="constant")
+
+        non_black_indices = np.where(np.any(volume > 0, axis=(0, 1)))[0]
+        # non_black_indices = [i for i in range(volume.shape[2]) if np.any(volume[:, :, i] > 0)]
         total_needed = self.num_slices * 3 * self.gap
         if len(non_black_indices) < total_needed:
             raise ValueError(f"Not enough slices in {nii_path}, required={total_needed}, found={len(non_black_indices)}")
@@ -141,4 +157,4 @@ class MRISliceDataset(torch.utils.data.Dataset):
         # Rearrange from [T, H, W, C] → [C, T, H, W]
         buffer = buffer.permute(3, 0, 1, 2)  # [3, 16, 224, 224] #New line
         
-        return [buffer], torch.tensor(label, dtype=torch.float32), torch.tensor(selected)
+        return [buffer], torch.tensor(label, dtype=torch.float32), torch.tensor(selected), nii_path , idx

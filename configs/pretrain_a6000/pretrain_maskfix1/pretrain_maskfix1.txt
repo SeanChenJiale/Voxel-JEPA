@@ -7,4 +7,4 @@ txt file created at pretrain_maskfix1.txt
 
 python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1/pretrain_maskfix9_multiblock_10epoch.yaml --devices cuda:0 --save_mask True>/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny/pretrain_maskfix5_colour_norm.log 2>&1
 python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1/pretrain_maskfix9_multiblock_10epoch.yaml --devices cuda:2>/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny/pretrain_maskfix9_multiblock_10epoch.log 2>&1
-python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1/pretrain_maskfix13.yaml --devices cuda:1 >/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny/pretrain_maskfix13_multiblock.log 2>&1
+python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1/pretrain_maskfix14.yaml --devices cuda:1 save_mask True | tee /media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny/pretrain_maskfix11_coronal.log
