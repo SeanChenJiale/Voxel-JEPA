@@ -19,7 +19,7 @@ from decord import VideoReader, cpu
 import torch
 
 from src.datasets.utils.weighted_sampler import DistributedWeightedSampler
-from src.utils.logging import init_csv_writer
+
 
 _GLOBAL_SEED = 0
 logger = getLogger()
@@ -213,7 +213,12 @@ class VideoDataset(torch.utils.data.Dataset):
             vr = VideoReader(fname, num_threads=-1, ctx=cpu(0))
         except Exception:
             return [], None
-
+        # Special case: if video has exactly 64 frames, pick every 4th frame
+        if len(vr) == 64:
+            indices = np.arange(0, 64, 4)
+            buffer = vr.get_batch(indices).asnumpy()
+            clip_indices = [indices]
+            return buffer, clip_indices
         fpc = self.frames_per_clip
         fstp = self.frame_step
         if self.duration is not None:

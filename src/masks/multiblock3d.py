@@ -46,6 +46,7 @@ class MaskCollator(object):
             )
             self.mask_generators.append(mask_generator)
 
+
     def step(self):
         for mask_generator in self.mask_generators:
             mask_generator.step()
@@ -192,6 +193,7 @@ class _MaskGenerator(object):
 
         #     logger.info(f"DEBUG this is the total number of expected patches: {total_patches}")
         for _ in range(batch_size):
+
             empty_context = True
             while empty_context:
 
@@ -205,9 +207,9 @@ class _MaskGenerator(object):
                 mask_p = torch.argwhere(mask_e == 0).squeeze()
                 mask_e = torch.nonzero(mask_e).squeeze()
 
-
-                # logger.info(f"DEBUG this is the mask_e size: {mask_e.size()}")
-                # logger.info(f"DEBUG this is the mask_p size: {mask_p.size()}")
+                # if self.debug:
+                #     logger.info(f"DEBUG this is the mask_e size: {mask_e.size()}")
+                #     logger.info(f"DEBUG this is the mask_p size: {mask_p.size()}")
 
                 empty_context = len(mask_e) == 0
                 if not empty_context:
@@ -226,49 +228,16 @@ class _MaskGenerator(object):
         #     logger.info(f"DEBUG this is the min keep enc size: {min_keep_enc}")
         #     logger.info(f"DEBUG this is the min keep pred size: {min_keep_pred}")
 
-        collated_masks_pred = [cm[:min_keep_pred] for cm in collated_masks_pred]
+        collated_masks_pred = [collated_masks_pred[0].clone() for _ in range(batch_size)]
         collated_masks_pred = torch.utils.data.default_collate(collated_masks_pred)
         # --
-        collated_masks_enc = [cm[:min_keep_enc] for cm in collated_masks_enc]
+        collated_masks_enc = [collated_masks_enc[0].clone() for _ in range(batch_size)]
         collated_masks_enc = torch.utils.data.default_collate(collated_masks_enc)
 
         # if self.debug:
         #     logger.info(f"DEBUG this is the collated masks enc size: {collated_masks_enc.size()}")
         #     logger.info(f"DEBUG this is the collated masks pred size: {collated_masks_pred.size()} \n")
 
-        # Find the largest predictor mask size
 
-
-        # #### new function (not working )
-        # max_pred_size = max(len(mask) for mask in collated_masks_pred)
-        # logger.info(f"DEBUG Max predictor mask size: {max_pred_size}")
-
-        # # Pad all predictor masks to the largest size
-        # for i in range(len(collated_masks_pred)):
-        #     padding_size = max_pred_size - len(collated_masks_pred[i])
-        #     collated_masks_pred[i] = torch.cat(
-        #         [collated_masks_pred[i], torch.full((padding_size,), -1, dtype=torch.int64)]
-        #     )
-
-        # # Collate the padded predictor masks
-        # collated_masks_pred = torch.stack(collated_masks_pred)
-
-        # logger.info(f"DEBUG this is the collated masks pred size after padding: {collated_masks_pred.size()}")
-
-        # max_enc_size = max(len(mask) for mask in collated_masks_enc)
-        # logger.info(f"DEBUG Max encoder mask size: {max_enc_size}")
-
-        # # Pad all encictor masks to the largest size
-        # for i in range(len(collated_masks_enc)):
-        #     padding_size = max_enc_size - len(collated_masks_enc[i])
-        #     collated_masks_enc[i] = torch.cat(
-        #         [collated_masks_enc[i], torch.full((padding_size,), -1, dtype=torch.int64)]
-        #     )
-
-        # # Collate the padded encictor masks
-        # collated_masks_enc = torch.stack(collated_masks_enc)
-        
-        # logger.info(f"DEBUG this is the collated masks enc size after padding: {collated_masks_enc.size()}")
-        # #######
 
         return collated_masks_enc, collated_masks_pred

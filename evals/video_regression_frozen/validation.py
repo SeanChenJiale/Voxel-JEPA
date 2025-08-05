@@ -66,6 +66,7 @@ torch.backends.cudnn.benchmark = True
 pp = pprint.PrettyPrinter(indent=4)
 
 def load_regressor_weights(model, checkpoint_path, key='classifier', strict=False):
+    
     """
     Load classifier weights into the given model.
 
@@ -109,12 +110,13 @@ def load_regressor_weights(model, checkpoint_path, key='classifier', strict=Fals
     except Exception as e:
         logger.error(f"Error loading checkpoint: {e}")
         raise
-def main(args_eval, resume_preempt=False, debug=False):
+def main(args_eval, plotter, resume_preempt=False, debug=False):
     # ----------------------------------------------------------------------- #
     #  PASSED IN PARAMS FROM CONFIG FILE
     # ----------------------------------------------------------------------- #
-
+    print("\n\n\n\n\n IN VALIDATION \n\n\n\n\n\n")
     # -- PRETRAIN
+    args_eval_name = args_eval.get('eval_name')
     args_pretrain = args_eval.get('pretrain')
     checkpoint_key = args_pretrain.get('checkpoint_key', 'target_encoder')
     model_name = args_pretrain.get('model_name', None)
@@ -248,7 +250,7 @@ def main(args_eval, resume_preempt=False, debug=False):
 
 
     # TRAIN LOOP
-    writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name, 'eval_results.csv'))
+    writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name, f"{tag}eval_results.csv"))
     writer.writerow(["Iteration", "Accuracy", "Loss"])
     for epoch in range(1):
         val_acc, val_mae = run_one_epoch(

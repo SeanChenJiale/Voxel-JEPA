@@ -11,7 +11,7 @@ for nii_path in nii_list:
     final_list.append([nii_path,2,-1])
 
 # Write to a CSV file with whitespace as the delimiter
-with open('/media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_non_skullstrip/non_skull_strip_nii_list.csv', 'w', newline='') as file:
+with open('/media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/vit_tiny_draft/full_list.csv', 'w', newline='') as file:
     writer = csv.writer(file, delimiter=' ')
     writer.writerows(final_list)
 

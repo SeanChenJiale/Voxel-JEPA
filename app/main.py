@@ -10,10 +10,10 @@ import multiprocessing as mp  # For parallel processing across multiple GPUs
 import pprint  # For pretty-printing dictionaries (e.g., config)
 import yaml  # For loading YAML configuration files
 import wandb  # For logging and visualization
-
+import torch.distributed as dist
 from app.scaffold import main as app_main  # Entry point for the pretraining pipeline
 from src.utils.distributed import init_distributed  # Initializes distributed GPU communication
-
+import os
 # Argument parser for CLI inputs
 parser = argparse.ArgumentParser()
 
@@ -73,11 +73,6 @@ def process_main(rank, fname, world_size, devices, plotter,debug,save_mask): #de
         with open(dump, 'w') as f:
             yaml.dump(params, f)  # Save loaded config to disk
 
-    # Init distributed (access to comm between GPUS on same machine)
-    world_size, rank = init_distributed(rank_and_world_size=(rank, world_size))  # Setup DDP environment
-
-    logger.info(f'Running... (rank: {rank}/{world_size})')  # Log DDP startup info
-    
     ###New by Hasitha
     if rank == 0 and plotter == 'wandb':
         wandb.init(
@@ -88,17 +83,29 @@ def process_main(rank, fname, world_size, devices, plotter,debug,save_mask): #de
         )
     
 
+    # # Init distributed (access to comm between GPUS on same machine)
+    # world_size, rank = init_distributed(rank_and_world_size=(rank, world_size))  # Setup DDP environment
+     # create default process group
+    dist.init_process_group("gloo", rank=rank, world_size=world_size)
+    logger.info(f'Running... (rank: {rank}/{world_size})')  # Log DDP startup info
+    
     # Launch the app with loaded config
     app_main(params['app'], args=params, debug=debug, save_mask=save_mask)  # Start pretraining via app.scaffold.main
 
 
 if __name__ == '__main__':
-    args = parser.parse_args()  # Parse all command-line arguments
+    args = parser.parse_args() 
     # import pdb; pdb.set_trace()
-    num_gpus = len(args.devices)  # Total GPUs specified
-    mp.set_start_method('spawn')  # Use spawn to launch subprocesses (safe for CUDA)
+    num_gpus = len(args.devices)  
+    params = None
+    with open(args.fname, 'r') as y_file:
+        params = yaml.load(y_file, Loader=yaml.FullLoader)
+
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = str(params['port'])
+    mp.set_start_method('spawn')  
     for rank in range(num_gpus):  # Loop over GPUs
         mp.Process(  # Create a process for each GPU
-            target=process_main,  # Entry point for subprocess
+            target=process_main,  
             args=(rank, args.fname, num_gpus, args.devices, args.plotter, args.debug, args.save_mask) #args=(rank, args.fname, num_gpus, args.devices)  # Pass args to each process
-        ).start()  # Start subprocess
+        ).start()  

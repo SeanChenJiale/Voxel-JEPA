@@ -18,9 +18,12 @@ optimization:
   resolution: 224
   batch_size: 14
   weight_decay: 0.01
-  lr: 0.001
-  start_lr: 0.001
-  final_lr: 0.0
+  lr: 0.0001
+  start_lr: 0.0001
+  final_lr: 0.00001
+  # lr: 0.001
+  # start_lr: 0.001
+  # final_lr: 0.0
   warmup: 0.
   use_bfloat16: true
 pretrain:

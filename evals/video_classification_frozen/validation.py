@@ -110,7 +110,7 @@ def load_classifier_weights(model, checkpoint_path, key='classifier', strict=Fal
         raise
 
 
-def main(args_eval, resume_preempt=False, debug=False):
+def main(args_eval, plotter, resume_preempt=False, debug=False):
     # ----------------------------------------------------------------------- #
     #  PASSED IN PARAMS FROM CONFIG FILE
     # ----------------------------------------------------------------------- #

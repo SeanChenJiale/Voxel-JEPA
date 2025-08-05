@@ -43,8 +43,7 @@ from src.utils.schedulers import (
 )
 from src.utils.logging import (
     AverageMeter,
-    CSVLogger,
-    init_csv_writer
+    CSVLogger
 )
 
 from evals.video_classification_frozen.utils import (
@@ -65,7 +64,8 @@ torch.backends.cudnn.benchmark = True
 pp = pprint.PrettyPrinter(indent=4)
 
 
-def main(args_eval, resume_preempt=False, debug=False):
+def main(args_eval, plotter, resume_preempt=False, debug=False):
+    print("\n\n\n\n IN CLASSIFICATION FINE TUNING \n\n\n\n")
     # ----------------------------------------------------------------------- #
     #  PASSED IN PARAMS FROM CONFIG FILE
     # ----------------------------------------------------------------------- #
@@ -133,7 +133,11 @@ def main(args_eval, resume_preempt=False, debug=False):
     # -- EXPERIMENT-ID/TAG (optional)
     resume_checkpoint = args_eval.get('resume_checkpoint', False) or resume_preempt
     eval_tag = args_eval.get('tag', None)
-
+    
+    # -- LOGGING    
+    args_logging = args_eval.get('logging')
+    project_name = args_logging.get('project', 'voxel-jepa-fine-tuning')
+    run_name = args_logging.get('run_name', 'voxel-finetune-test')
     # ----------------------------------------------------------------------- #
 
     try:
@@ -167,7 +171,14 @@ def main(args_eval, resume_preempt=False, debug=False):
     #                            ('%.5f', 'acc'))
     #### New part by Hasitha
     if rank == 0:
-        if args_eval.get("plotter", "csv") == "wandb":
+        if plotter == "wandb":
+            import wandb
+            wandb.init(
+                entity= "voxel-jepa" , # "hbgallella",
+                project=project_name,
+                name=run_name,
+                config=args_eval
+            )
             from src.utils.logging import WandBCSVLoggerEval
             csv_logger = WandBCSVLoggerEval(csv_path=log_file)
         else:

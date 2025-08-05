@@ -216,7 +216,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
     #     ('%d', 'wall-time(ms)'),
     # )
     ######## New by Hasitha ####
-    if args.get("plotter", "csv") == "wandb":
+    if args.get("plotter", "csv") == "wandb" and rank == 0:
         from src.utils.logging import WandBCSVLogger
         logger_impl = WandBCSVLogger(csv_path=log_file)
     else:
@@ -402,7 +402,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
         #     mask_dir_path = os.path.join(args.get('logging').get('folder'),'masks_csv')
         #     epoch_dir_path = os.path.join(mask_dir_path, f"epoch_{epoch+1}")
         #     os.makedirs(epoch_dir_path, exist_ok=True)
-        if save_mask and rank == 0:
+        if save_mask:
             epoch_dir_path = os.path.join(mask_dir_path, f"epoch_{epoch+1}")
             os.makedirs(epoch_dir_path, exist_ok=True)
             clip_index_list = []
@@ -477,7 +477,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
             
             # if debug:
             #     logger.info(f"index of clip, {udata[4]}") # udata is the __getitem__ base function in video_dataset.py 
-            if save_mask and rank == 0:
+            if save_mask:
                 epoch_dir_path = os.path.join(mask_dir_path, f"epoch_{epoch+1}")
                 os.makedirs(epoch_dir_path, exist_ok=True)
                 save_masks_to_csv(masks_enc, masks_pred, filename=os.path.join(epoch_dir_path,f"masks_itr_{itr}.csv"),logger=logger)
@@ -562,7 +562,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                     count = 0
                     for zi, hi in zip(z, h):
                         loss += torch.mean(torch.abs(zi - hi)**loss_exp) / loss_exp
-                        if save_mask and rank == 0:
+                        if save_mask:
                             # logger.info(f"epoch_dir_path is {epoch_dir_path}")
                             # logger.info(f"this is zi: {zi.size()} this is hi: {hi.size()}")
                             torch.save(zi, os.path.join(epoch_dir_path,f"iter{itr}_zi_mask{count}.pt"))
@@ -637,75 +637,76 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
 
             # -- Logging
             def log_stats():
-                logger_impl.log( ####### New by Hasitha ###############
-                    epoch + 1,
-                    itr,
-                    loss,
-                    loss_jepa,
-                    loss_reg,
-                    grad_stats.global_norm,
-                    grad_stats_pred.global_norm,
-                    gpu_etime_ms,
-                    iter_elapsed_time_ms)
-                
+                if rank == 0:
+                    logger_impl.log( ####### New by Hasitha ###############
+                        epoch + 1,
+                        itr,
+                        loss,
+                        loss_jepa,
+                        loss_reg,
+                        grad_stats.global_norm,
+                        grad_stats_pred.global_norm,
+                        gpu_etime_ms,
+                        iter_elapsed_time_ms)
+                    
 
-                if (itr % log_freq == 0) or np.isnan(loss) or np.isinf(loss):
-                    logger.info(
-                        '[%d, %5d] loss: %.3f | p%.3f r%.3f | '
-                        'input_var: %.3f %.3f | '
-                        'masks: %s '
-                        '[wd: %.2e] [lr: %.2e] '
-                        '[mem: %.2e] '
-                        '[gpu: %.1f ms]'
-                        '[wall: %.1f ms]'
-                        % (epoch + 1, itr,
-                           loss_meter.avg,
-                           jepa_loss_meter.avg,
-                           reg_loss_meter.avg,
-                           input_var_meter.avg,
-                           input_var_min_meter.avg,
-                           '[' + ', '.join(['%.1f' % m.avg for m in mask_meters]) + ']',
-                           _new_wd,
-                           _new_lr,
-                           torch.cuda.max_memory_allocated() / 1024.0**2,
-                           gpu_time_meter.avg,
-                           wall_time_meter.avg))
-
-                    if optim_stats is not None:
+                    if (itr % log_freq == 0) or np.isnan(loss) or np.isinf(loss):
                         logger.info(
-                            '[%d, %5d] first moment: %.2e [%.2e %.2e] second moment: %.2e [%.2e %.2e]'
+                            '[%d, %5d] loss: %.3f | p%.3f r%.3f | '
+                            'input_var: %.3f %.3f | '
+                            'masks: %s '
+                            '[wd: %.2e] [lr: %.2e] '
+                            '[mem: %.2e] '
+                            '[gpu: %.1f ms]'
+                            '[wall: %.1f ms]'
                             % (epoch + 1, itr,
-                               optim_stats.get('exp_avg').avg,
-                               optim_stats.get('exp_avg').min,
-                               optim_stats.get('exp_avg').max,
-                               optim_stats.get('exp_avg_sq').avg,
-                               optim_stats.get('exp_avg_sq').min,
-                               optim_stats.get('exp_avg_sq').max))
+                            loss_meter.avg,
+                            jepa_loss_meter.avg,
+                            reg_loss_meter.avg,
+                            input_var_meter.avg,
+                            input_var_min_meter.avg,
+                            '[' + ', '.join(['%.1f' % m.avg for m in mask_meters]) + ']',
+                            _new_wd,
+                            _new_lr,
+                            torch.cuda.max_memory_allocated() / 1024.0**2,
+                            gpu_time_meter.avg,
+                            wall_time_meter.avg))
 
-                    if grad_stats is not None:
-                        logger.info(
-                            '[%d, %5d] enc_grad_stats: f/l[%.2e %.2e] mn/mx(%.2e, %.2e) %.2e'
-                            % (epoch + 1, itr,
-                               grad_stats.first_layer,
-                               grad_stats.last_layer,
-                               grad_stats.min,
-                               grad_stats.max,
-                               grad_stats.global_norm))
+                        if optim_stats is not None:
+                            logger.info(
+                                '[%d, %5d] first moment: %.2e [%.2e %.2e] second moment: %.2e [%.2e %.2e]'
+                                % (epoch + 1, itr,
+                                optim_stats.get('exp_avg').avg,
+                                optim_stats.get('exp_avg').min,
+                                optim_stats.get('exp_avg').max,
+                                optim_stats.get('exp_avg_sq').avg,
+                                optim_stats.get('exp_avg_sq').min,
+                                optim_stats.get('exp_avg_sq').max))
 
-                    if grad_stats_pred is not None:
-                        logger.info(
-                            '[%d, %5d] pred_grad_stats: f/l[%.2e %.2e] mn/mx(%.2e, %.2e) %.2e'
-                            % (epoch + 1, itr,
-                               grad_stats_pred.first_layer,
-                               grad_stats_pred.last_layer,
-                               grad_stats_pred.min,
-                               grad_stats_pred.max,
-                               grad_stats_pred.global_norm))
-                        
+                        if grad_stats is not None:
+                            logger.info(
+                                '[%d, %5d] enc_grad_stats: f/l[%.2e %.2e] mn/mx(%.2e, %.2e) %.2e'
+                                % (epoch + 1, itr,
+                                grad_stats.first_layer,
+                                grad_stats.last_layer,
+                                grad_stats.min,
+                                grad_stats.max,
+                                grad_stats.global_norm))
+
+                        if grad_stats_pred is not None:
+                            logger.info(
+                                '[%d, %5d] pred_grad_stats: f/l[%.2e %.2e] mn/mx(%.2e, %.2e) %.2e'
+                                % (epoch + 1, itr,
+                                grad_stats_pred.first_layer,
+                                grad_stats_pred.last_layer,
+                                grad_stats_pred.min,
+                                grad_stats_pred.max,
+                                grad_stats_pred.global_norm))
+                            
             log_stats()
             assert not np.isnan(loss), 'loss is nan'
 
-        if save_mask and rank == 0:
+        if save_mask:
             with open(os.path.join(epoch_dir_path,"clip_index_list.csv"), "w") as file:
                 file.writelines("itr\t clip_index_list\n")
                 file.writelines(["\t".join(map(str, row)) + "\n" for row in clip_index_list])              
@@ -721,7 +722,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                     save_checkpoint(epoch + 1, save_every_path)
             
     ##### New by Hasitha ####
-    if args.get("plotter", "csv") == "wandb":
+    if args.get("plotter", "csv") == "wandb" and rank == 0:
         import wandb
         wandb.finish()
             

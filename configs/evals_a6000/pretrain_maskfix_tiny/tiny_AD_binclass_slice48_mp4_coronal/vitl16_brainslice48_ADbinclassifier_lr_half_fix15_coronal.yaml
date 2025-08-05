@@ -1,0 +1,66 @@
+nodes: 1
+tasks_per_node: 1
+tag: vit_tiny_brainslice48_ADbinclass_Coronal
+eval_name: video_classification_frozen
+resume_checkpoint: false
+data:
+  dataset_train: /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/pretrain_maskfix_tiny/tiny_AD_binclass_slice48_mp4_coronal/Brainslice_48_ADclassification_train_final_filtered.csv
+  dataset_val: /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/pretrain_maskfix_tiny/tiny_AD_binclass_slice48_mp4_coronal/Brainslice_48_ADclassification_val_final_filtered.csv
+  dataset_type: VideoDataset
+  num_classes: 2
+  frames_per_clip: 16
+  num_segments: 1
+  num_workers: 6
+  num_views_per_segment: 1
+  frame_step: 4
+optimization:
+  attend_across_segments: false
+  num_epochs: 300
+  resolution: 224
+  batch_size: 14
+  weight_decay: 0.01
+  lr: 0.0001
+  start_lr: 0.0001
+  final_lr: 0.00001
+  warmup: 0.
+  use_bfloat16: true
+data_aug:
+  auto_augment: false
+  motion_shift: false
+  random_resize_aspect_ratio:
+  - 0.75
+  - 1.35
+  random_resize_scale:
+  - 0.3
+  - 1.0
+  reprob: 0.0
+  normalize:
+  - - 0.347
+    - 0.347
+    - 0.347
+  - - 0.346
+    - 0.346
+    - 0.346
+pretrain:
+  model_name: vit_tiny
+  checkpoint_key: target_encoder
+  clip_duration: null
+  frames_per_clip: 16
+  tubelet_size: 2
+  uniform_power: true
+  use_silu: false
+  tight_silu: false
+  use_sdpa: true
+  patch_size: 16
+  folder: /media/backup_16TB/sean/VJEPA/a6000_output/fix15
+  checkpoint: vittiny_maskfix15-latest.pth.tar  # name of pretrained model file inside folder
+  write_tag: ADbinclassifier_vittiny_maskfix15_coronal
+
+logging:
+  project: voxel-jepa-fine-tuning # Don't change this
+  run_name: ADbinclassifier_vittiny_maskfix15_coronal # Please change every time before running, this is the name for wandb run file
+
+  ##todo run tomorrow 9th april.
+  #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/pretrain_maskfix_tiny/tiny_AD_binclass_slice48_mp4/vitl16_brainslice48_ADbinclassifier_lr_half_fix10.yaml --devices cuda:0>/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny/video_classification_frozen/vit_tiny_brainslice48_ADbinclass/lr_half_fix10.log 2>&1
+  #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/pretrain_maskfix_tiny/tiny_AD_binclass_slice48_mp4_coronal/vitl16_brainslice48_ADbinclassifier_lr_half_fix15_coronal.yaml --devices cuda:2 
+  
