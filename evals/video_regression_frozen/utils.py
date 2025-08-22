@@ -331,7 +331,7 @@ def tensor_normalize(tensor, mean, std):
         mean (tensor or list): mean value to subtract.
         std (tensor or list): std to divide.
     """
-    if tensor.dtype == torch.uint8:
+    if tensor.dtype == torch.uint8 or tensor.dtype == torch.float32 or tensor.dtype == torch.float16 :
         tensor = tensor.float()
         tensor = tensor / 255.0
     if type(mean) == list:

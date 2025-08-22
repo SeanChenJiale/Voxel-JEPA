@@ -137,10 +137,6 @@ class VideoDataset(torch.utils.data.Dataset):
                 samples += list(data.values[:, 0])
                 labels += list(data.values[:, 1])
                 num_samples = len(data)
-                # if self.debug:
-                #     logger.info(f"DEBUG first 3 samples: {samples[:3]}")
-                #     logger.info(f"DEBUG num_samples: {num_samples}, taking from {data_path}")
-
                 self.num_samples_per_dataset.append(num_samples)
 
             elif data_path[-4:] == '.npy':
@@ -186,11 +182,19 @@ class VideoDataset(torch.utils.data.Dataset):
         if self.shared_transform is not None:
             buffer = self.shared_transform(buffer)
         buffer = split_into_clips(buffer)
-        if self.transform is not None:
+
+        # import os
+        # from torchvision.utils import save_image
+        # debug_dir = "/media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/video_classification_frozen"
+        # vid_or_mri_str = "debug_vid"
+        # debug_dir = os.path.join(debug_dir, vid_or_mri_str,"iteration_epoch_clip")    
+        # torch.save(buffer[0], os.path.join(debug_dir, "debug_dataset_before_transform_tensor.pt"))
+
+        if self.transform is not None: #
             buffer = [self.transform(clip) for clip in buffer]
-        # if self.debug:
-        #     logger.info(f"DEBUG buffer length is: {len(buffer)}")
-        
+
+        # torch.save(buffer[0], os.path.join(debug_dir, "debug_dataset_after_transform_tensor.pt"))
+        # breakpoint()
         return buffer, label, clip_indices, sample , index
 
     def loadvideo_decord(self, sample):
@@ -238,9 +242,6 @@ class VideoDataset(torch.utils.data.Dataset):
         # Partition video into equal sized segments and sample each clip
         # from a different segment
         partition_len = len(vr) // self.num_clips
-
-        # if self.debug:
-        #     logger.info(f"DEBUG frame step: {fstp}, clip length: {clip_len}, partition length: {partition_len}")
 
         all_indices, clip_indices = [], []
         for i in range(self.num_clips):

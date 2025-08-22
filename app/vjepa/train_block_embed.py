@@ -45,7 +45,7 @@ from app.vjepa.utils import (
     init_opt,
 )
 from app.vjepa.transforms import make_transforms
-
+import pdb
 
 # --
 log_timings = True
@@ -75,8 +75,6 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
         print('========================')
         print('\n\n')
         mask_dir_path = os.path.join(args.get('logging').get('folder'),'iteration_epoch_clip')
-        os.makedirs(mask_dir_path, exist_ok=True)
-        logger.info(f"creating  {mask_dir_path} " )
     if save_mask: 
         from src.utils.save_mask import save_masks_to_csv
                 # Debug phase: Save masks_enc and masks_pred to a CSV file
@@ -114,6 +112,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
     uniform_power = cfgs_model.get('uniform_power', True)
     use_mask_tokens = cfgs_model.get('use_mask_tokens', True)
     zero_init_mask_tokens = cfgs_model.get('zero_init_mask_tokens', True)
+    blockwise_patch_embed= cfgs_model.get('blockwise_patch_embed', False)  #+
 
     # -- DATA
     cfgs_data = args.get('data')
@@ -252,6 +251,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
         pred_depth=pred_depth,
         pred_embed_dim=pred_embed_dim,
         use_sdpa=use_sdpa,
+        blockwise_patch_embed= blockwise_patch_embed, #+
     )
     target_encoder = copy.deepcopy(encoder)
 
@@ -304,6 +304,8 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
          pin_mem=pin_mem,
          rank=rank,
          log_dir=folder if log_resource_util_data else None)
+    # import pdb
+
     try:
         _dlen = len(unsupervised_loader)
     except Exception:  # Different interface for webdataset
@@ -454,8 +456,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                 # logger.info(f"shape of udata[2] {[udat.shape for udat in udata[2]]}")
                 # logger.info(f"len of udata[2] {(udata[2])}")
             # Usage:
-            if debug and dataset_type == "MriDataset":
-                print("\n\n\n\n saving clip \n\n\n\n")
+            if debug and dataset_type == "mridataset_som":
                 save_clip_frames_as_grid(udata[0][0][0],label = f"{udata[3][0]}__{udata[5][0]}", filename=os.path.join(mask_dir_path,f"epoch{epoch}_itr{itr}_clip0.png"))
             def load_clips():
                 # -- unsupervised video clips
@@ -477,33 +478,6 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                 return (clips, _masks_enc, _masks_pred)
                 
             clips, masks_enc, masks_pred = load_clips()
-            if debug:
-                # Plot and save histogram of intensities for each channel of the first clip as subplots
-                try:
-                    import matplotlib.pyplot as plt
-                    first_clip = clips[0]  # shape: [C, T, H, W] or [C, ...]
-                    clips_min = first_clip.min().item()
-                    num_channels = first_clip.shape[0]
-                    fig, axs = plt.subplots(1, num_channels, figsize=(5*num_channels, 4))
-                    if num_channels == 1:
-                        axs = [axs]
-                    total_pixels = first_clip.numel()
-                    for c in range(num_channels):
-                        channel_data = first_clip[c].detach().cpu().numpy().flatten()
-                        # Exclude min value
-                        channel_data = channel_data[channel_data != clips_min]
-                        axs[c].hist(channel_data, bins=50, alpha=0.7, color=f'C{c}')
-                        axs[c].set_title(f'Channel {c}')
-                        axs[c].set_xlabel('Intensity')
-                        axs[c].set_ylabel('Frequency')
-                    fig.suptitle(f'Histogram of Intensities for Each Channel (First Clip)\nTotal pixel count: {total_pixels} (excluding min)')
-                    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-                    os.makedirs(mask_dir_path, exist_ok=True)
-                    plt.savefig(os.path.join(mask_dir_path, 'channelplot.png'), dpi=100)
-                    plt.close(fig)
-                    logger.info(f"plotted histograms as subplots")
-                except Exception as e:
-                    logger.info(f"Could not plot channel histogram: {e}")
             
             # if debug:
             #     logger.info(f"index of clip, {udata[4]}") # udata is the __getitem__ base function in video_dataset.py 
@@ -521,21 +495,21 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
             #     logger.info(f"DEBUG shape of each mask in mask_pred AFTER load_clips: {[mask.shape for mask in masks_pred]}")
             #     logger.info(f"DEBUG clips: {clips.size()}")
 
-            #     logger.info(f"DEBUG this is clips : {clips}")
-            #     ######### debug phase #####
-            #     # debug and print mask_enc and mask_pred]\
+                # logger.info(f"DEBUG this is clips : {clips}")
+                ########## debug phase #####
+                ## debug and print mask_enc and mask_pred]\
 
-            #     for i, m in enumerate(masks_enc):
-            #         for j in range(len(m)):
-            #             print(f"masks_enc[{i}][{j}]: {m[j].size()}")
-            #             print(f"masks_pred[{i}][{j}]: {masks_pred[i][j].size()}")
-            #             print(f"total_patches: {len(m[j]) + len(masks_pred[i][j])}")
+                # for i, m in enumerate(masks_enc):
+                #     for j in range(len(m)):
+                #         print(f"masks_enc[{i}][{j}]: {m[j].size()}")
+                #         print(f"masks_pred[{i}][{j}]: {masks_pred[i][j].size()}")
+                #         print(f"total_patches: {len(m[j]) + len(masks_pred[i][j])}")
                 
-            #         print(f"masks_enc[{i}]: {len(m)}")
-            #         print(f"masks_pred[{i}]: {len(masks_pred[i])}")
+                    # print(f"masks_enc[{i}]: {len(m)}")
+                    # print(f"masks_pred[{i}]: {len(masks_pred[i])}")
                 
-            #     create a directory within mask_dir_path for each epoch
-            #     save the masks_enc and masks_pred to a csv file
+                # create a directory within mask_dir_path for each epoch
+                # save the masks_enc and masks_pred to a csv file
             ########## debug phase #####
 
             for _i, m in enumerate(mask_meters):

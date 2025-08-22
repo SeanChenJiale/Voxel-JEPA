@@ -65,7 +65,23 @@ pp = pprint.PrettyPrinter(indent=4)
 
 
 def main(args_eval, plotter, resume_preempt=False, debug=False):
-    print("\n\n\n\n IN CLASSIFICATION FINE TUNING \n\n\n\n")
+    if debug:
+        print('\n\n')
+        print('========================')
+        print('========================')
+        print('In DEBUG MODE')
+        print('========================')
+        print('========================')
+        print('\n\n')
+        mask_dir_path = os.path.join(args_eval.get('pretrain').get('folder'),args_eval.get('eval_name'),args_eval.get('tag'),'iteration_epoch_clip')
+        os.makedirs(mask_dir_path, exist_ok=True)
+        logger.info(f"creating  {mask_dir_path} " )
+    else:
+        print('========================')
+        print('========================')
+        print('IN CLASSIFICATION FINE TUNING')
+        print('========================')
+        print('========================')
     # ----------------------------------------------------------------------- #
     #  PASSED IN PARAMS FROM CONFIG FILE
     # ----------------------------------------------------------------------- #
@@ -316,7 +332,9 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
             scheduler=scheduler,
             wd_scheduler=wd_scheduler,
             data_loader=train_loader,
-            use_bfloat16=use_bfloat16)
+            use_bfloat16=use_bfloat16,
+            debug=debug,
+            mask_dir_path=mask_dir_path if debug else None)
 
         val_acc = run_one_epoch(
             device=device,
@@ -331,7 +349,9 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
             scheduler=scheduler,
             wd_scheduler=wd_scheduler,
             data_loader=val_loader,
-            use_bfloat16=use_bfloat16)
+            use_bfloat16=use_bfloat16,
+            debug=debug,
+            mask_dir_path=mask_dir_path if debug else None)
 
         logger.info('[%5d] train: %.3f%% test: %.3f%%' % (epoch + 1, train_acc, val_acc))
         if rank == 0:
@@ -359,6 +379,8 @@ def run_one_epoch(
     num_spatial_views,
     num_temporal_views,
     attend_across_segments,
+    debug=False,
+    mask_dir_path=None
 ):
 
     classifier.train(mode=training)
@@ -377,6 +399,35 @@ def run_one_epoch(
                 [dij.to(device, non_blocking=True) for dij in di]  # iterate over spatial views of clip
                 for di in data[0]  # iterate over temporal index of clip
             ]
+            if debug and itr == 0 :
+                torch.save(clips[0][0], os.path.join(mask_dir_path, "debug_input_tensor.pt"))
+                print(f"Saved input tensor to {os.path.join(mask_dir_path, 'debug_input_tensor.pt')}")
+                # Plot and save histogram of intensities for each channel of the first clip as subplots
+                try:
+                    import matplotlib.pyplot as plt
+                    first_clip = clips[0][0][0]  # shape: [C, T, H, W] or [C, ...]
+                    clips_min = first_clip.min().item()
+                    num_channels = first_clip.shape[0]
+                    fig, axs = plt.subplots(1, num_channels, figsize=(5*num_channels, 4))
+                    if num_channels == 1:
+                        axs = [axs]
+                    total_pixels = first_clip.numel()
+                    for c in range(num_channels):
+                        channel_data = first_clip[c].detach().cpu().numpy().flatten()
+                        # Exclude min value
+                        channel_data = channel_data[channel_data != clips_min]
+                        axs[c].hist(channel_data, bins=50, alpha=0.7, color=f'C{c}')
+                        axs[c].set_title(f'Channel {c}')
+                        axs[c].set_xlabel('Intensity')
+                        axs[c].set_ylabel('Frequency')
+                    fig.suptitle(f'Histogram of Intensities for Each Channel (First Clip)\nTotal pixel count: {total_pixels}')
+                    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+                    os.makedirs(mask_dir_path, exist_ok=True)
+                    plt.savefig(os.path.join(mask_dir_path, 'channelplot.png'), dpi=100)
+                    plt.close(fig)
+                    logger.info(f"plotted histograms as subplots")
+                except Exception as e:
+                    logger.info(f"Could not plot channel histogram: {e}")
             clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
             labels = data[1].to(device)
             batch_size = len(labels)
@@ -614,3 +665,32 @@ def init_opt(
         T_max=int(num_epochs*iterations_per_epoch))
     scaler = torch.cuda.amp.GradScaler() if use_bfloat16 else None
     return optimizer, scaler, scheduler, wd_scheduler
+
+def save_clip_frames_as_grid(tensor,label, filename="clip0.png"):
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    # Ensure parent directories exist
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    """
+    tensor: torch.Tensor of shape [3, T, 224, 224]
+    Saves a grid of T frames (each as RGB) to filename.
+    """
+
+    tensor = tensor.detach().cpu()
+    T = tensor.shape[1]
+    fig, axs = plt.subplots(1, T, figsize=(T * 2, 2))
+    if T == 1:
+        axs = [axs]
+    for i in range(T):
+        # [3, 224, 224] -> [224, 224, 3]
+        frame = tensor[:, i, :, :].permute(1, 2, 0).numpy()
+        # Normalize to [0, 1] for display if needed
+        frame = (frame - frame.min()) / (frame.max() - frame.min() + 1e-5)
+        axs[i].imshow(frame)
+        axs[i].axis('off')
+        axs[i].set_title(f"Frame {i}")
+    fig.suptitle(str(label))
+    plt.tight_layout()
+    plt.savefig(filename,dpi=80)
+    plt.close(fig)

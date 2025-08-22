@@ -38,7 +38,7 @@ def init_data(
     log_dir=None,
     debug=False,
 ):
-
+    print(f'init_data: {data}')
     if (data.lower() == 'imagenet') \
             or (data.lower() == 'inat21') \
             or (data.lower() == 'places205'):
@@ -81,26 +81,29 @@ def init_data(
             rank=rank,
             drop_last=drop_last,
             log_dir=log_dir,
-            debug=debug,)
-    
-    
-    #### New by Hasitha
+            debug=debug)
+            
     elif data.lower() == 'mridataset':
-        from src.datasets.mri_dataset import make_mridataset
+        from src.datasets.mri_dataset_7_8 import make_mridataset
         dataset, data_loader, dist_sampler = make_mridataset(
             data_paths=root_path,
             batch_size=batch_size,
-            num_slices= clip_len , # user wants 16 RGB frames = 48 axial slices
+            frames_per_volume=clip_len,
+            frame_step=frame_sample_rate,
+            duration=duration,
+            num_clips=num_clips,
+            random_clip_sampling=random_clip_sampling,
+            allow_clip_overlap=allow_clip_overlap,
+            filter_short_volumes=filter_short_videos,
+            filter_long_volumes=filter_long_videos,
+            shared_transform=shared_transform,
             transform=transform,
-            gap = frame_sample_rate, # Step between slices to control spacing
-            collator=collator,
-            num_workers=num_workers,
-            world_size=world_size,
-            rank=rank,
-            drop_last=drop_last,
-            pin_mem=pin_mem,
             datasets_weights=datasets_weights,
-            log_dir=log_dir)
-        
-
+            collator=collator,
+            drop_last=drop_last,
+            num_workers=num_workers,
+            rank=rank,
+            world_size=world_size,
+            log_dir=log_dir,
+            debug=debug,)  
     return (data_loader, dist_sampler)

@@ -23,7 +23,6 @@ def make_transforms(
     normalize=((0.485, 0.456, 0.406),
                (0.229, 0.224, 0.225))
 ):
-
     _frames_augmentation = VideoTransform(
         random_horizontal_flip=random_horizontal_flip,
         random_resize_aspect_ratio=random_resize_aspect_ratio,
@@ -84,7 +83,14 @@ class VideoTransform(object):
         )
 
     def __call__(self, buffer):
-
+        # import os
+        # import traceback
+        # output_path = "/media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/vit_base/debug/"
+        # video_or_mri_str = "mri"
+        # output_path = os.path.join(output_path, video_or_mri_str, "iteration_epoch_clip")
+        # torch.save(buffer, os.path.join(output_path, "utils_debug_dataset_before_transform_tensor.pt"))
+        # print("[VideoTransform.__call__] Stacktrace:")
+        # traceback.print_stack()
         if self.auto_augment:
             buffer = [transforms.ToPILImage()(frame) for frame in buffer]
             buffer = self.autoaug_transform(buffer)
@@ -93,9 +99,8 @@ class VideoTransform(object):
             buffer = buffer.permute(0, 2, 3, 1)  # T H W C
         else:
             buffer = torch.tensor(buffer, dtype=torch.float32)
-
+        
         buffer = buffer.permute(3, 0, 1, 2)  # T H W C -> C T H W
-
         buffer = self.spatial_transform(
             images=buffer,
             target_height=self.crop_size,
@@ -111,7 +116,7 @@ class VideoTransform(object):
             buffer = buffer.permute(1, 0, 2, 3)
             buffer = self.erase_transform(buffer)
             buffer = buffer.permute(1, 0, 2, 3)
-
+        # torch.save(buffer, os.path.join(output_path, "utils_debug_dataset_after_transform_tensor.pt"))
         return buffer
 
 
@@ -123,7 +128,8 @@ def tensor_normalize(tensor, mean, std):
         mean (tensor or list): mean value to subtract.
         std (tensor or list): std to divide.
     """
-    if tensor.dtype == torch.uint8 or tensor.dtype == torch.float32:
+
+    if tensor.dtype == torch.uint8 :
         tensor = tensor.float()
         tensor = tensor / 255.0
     if type(mean) == list:

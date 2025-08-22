@@ -97,6 +97,7 @@ def init_video_model(
     num_mask_tokens=2,
     zero_init_mask_tokens=True,
     use_sdpa=False,
+    blockwise_patch_embed= False, #+
 ):
     encoder = video_vit.__dict__[model_name](
         img_size=crop_size,
@@ -105,6 +106,7 @@ def init_video_model(
         tubelet_size=tubelet_size,
         uniform_power=uniform_power,
         use_sdpa=use_sdpa,
+        blockwise_patch_embed= blockwise_patch_embed, #+
     )
     print(f"pred_embed_dim: {pred_embed_dim}")
     encoder = MultiMaskWrapper(encoder)

@@ -111,6 +111,7 @@ def load_classifier_weights(model, checkpoint_path, key='classifier', strict=Fal
 
 
 def main(args_eval, plotter, resume_preempt=False, debug=False):
+    print("\n\n\n\n IN VALIDATION MODE \n\n\n\n")
     # ----------------------------------------------------------------------- #
     #  PASSED IN PARAMS FROM CONFIG FILE
     # ----------------------------------------------------------------------- #
