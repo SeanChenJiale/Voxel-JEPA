@@ -1,0 +1,1 @@
+python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_non_skullstrip/pretrain_maskfix1_mri.yaml --devices cuda:2 --save_mask True | tee /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_non_skullstrip/pretrain_non_skullstrip.log

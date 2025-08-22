@@ -1,0 +1,11 @@
+globbed paths: /media/backup_16TB/sean/Monai/PreProcessedData/**/*.nii.gz
+number of samples: 26055
+ipe : 1085
+include_list: ['OASIS_3', 'NACC_T1_Volume_mri', 'ADNI_MP_RAGE', 'WU1200', 'OASIS', 'ICBM', 'NACC_all_T1_3D', 'SALD', 'NACC_MPRAGE']
+csv file created at /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1_mri/pretrain_maskfix1_mri.csv
+txt file created at pretrain_maskfix1_mri.txt
+python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1_mri/pretrain_maskfix1_mri.yaml --devices cuda:1 --plotter csv --debug True >/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_mri/pretrain_maskfix1_mri.log 2>&1
+
+python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1_mri/pretrain_maskfix1_mri_trial3_org_mask.yaml --devices cuda:2 >/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_mri/pretrain_maskfix1_mri_trial3_org_mask.log 2>&1
+
+python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1_mri/pretrain_maskfix1_mri_trial5_org_mask.yaml --devices cuda:1 --plotter csv --save_mask True >/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_mri/pretrain_maskfix1_mri_trial5_org_mask.log 2>&1

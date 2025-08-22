@@ -1,0 +1,161 @@
+INFO:root:called-params /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/vit_base/AD_bin/video_load/debug/debug.yaml
+INFO:root:loaded params...
+{   'data': {   'dataset_train': '/media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000_csv/eval_AD/debug_mp4/debug_train.csv',
+                'dataset_type': 'VideoDataset',
+                'dataset_val': '/media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000_csv/eval_AD/debug_mp4/debug_test.csv',
+                'frame_step': 4,
+                'frames_per_clip': 16,
+                'num_classes': 2,
+                'num_segments': 1,
+                'num_views_per_segment': 1,
+                'num_workers': 0},
+    'data_aug': {   'auto_augment': False,
+                    'motion_shift': False,
+                    'normalize': [   [0.146689, 0.146689, 0.146689],
+                                     [0.267249, 0.267249, 0.267249]],
+                    'random_resize_aspect_ratio': [0.75, 1.35],
+                    'random_resize_scale': [0.3, 1.0],
+                    'reprob': 0.0},
+    'eval_name': 'video_classification_frozen',
+    'logging': {'project': 'debug-mri-ad', 'run_name': 'debug'},
+    'nodes': 1,
+    'optimization': {   'attend_across_segments': False,
+                        'batch_size': 14,
+                        'final_lr': 0.0,
+                        'lr': 0.0005,
+                        'num_epochs': 1,
+                        'resolution': 224,
+                        'start_lr': 0.0005,
+                        'use_bfloat16': True,
+                        'warmup': 0.0,
+                        'weight_decay': 0.005},
+    'port': 42007,
+    'pretrain': {   'checkpoint': 'vitbase_mri_ctn_50epoch_from_k400-latest.pth.tar',
+                    'checkpoint_key': 'target_encoder',
+                    'clip_duration': None,
+                    'folder': '/media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/',
+                    'frames_per_clip': 16,
+                    'model_name': 'vit_base',
+                    'patch_size': 16,
+                    'tight_silu': False,
+                    'tubelet_size': 2,
+                    'uniform_power': True,
+                    'use_sdpa': True,
+                    'use_silu': False,
+                    'write_tag': 'debug'},
+    'resume_checkpoint': False,
+    'tag': 'debug_vid',
+    'tasks_per_node': 1}
+INFO:root:Running... (rank: 0/1)
+INFO:root:Running evaluation: video_classification_frozen
+
+
+
+========================
+========================
+In DEBUG MODE
+========================
+========================
+
+
+
+INFO:root:creating  /media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/video_classification_frozen/debug_vid/iteration_epoch_clip 
+INFO:root:Initialized (rank/world-size) 0/1
+INFO:root:Loading pretrained model from /media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/vitbase_mri_ctn_50epoch_from_k400-latest.pth.tar
+VisionTransformer(
+  (patch_embed): PatchEmbed3D(
+    (proj): Conv3d(3, 768, kernel_size=(2, 16, 16), stride=(2, 16, 16))
+  )
+  (blocks): ModuleList(
+    (0-11): 12 x Block(
+      (norm1): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+      (attn): Attention(
+        (qkv): Linear(in_features=768, out_features=2304, bias=True)
+        (attn_drop): Dropout(p=0.0, inplace=False)
+        (proj): Linear(in_features=768, out_features=768, bias=True)
+        (proj_drop): Dropout(p=0.0, inplace=False)
+      )
+      (norm2): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+      (mlp): MLP(
+        (fc1): Linear(in_features=768, out_features=3072, bias=True)
+        (act): GELU(approximate='none')
+        (fc2): Linear(in_features=3072, out_features=768, bias=True)
+        (drop): Dropout(p=0.0, inplace=False)
+      )
+    )
+  )
+  (norm): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+)
+INFO:root:loaded pretrained model with msg: <All keys matched successfully>
+INFO:root:loaded pretrained encoder from epoch: 150
+ path: /media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/vitbase_mri_ctn_50epoch_from_k400-latest.pth.tar
+init_data: VideoDataset
+INFO:root:VideoDataset dataset created
+INFO:root:VideoDataset unsupervised data loader created
+init_data: VideoDataset
+INFO:root:VideoDataset dataset created
+INFO:root:VideoDataset unsupervised data loader created
+INFO:root:Dataloader created... iterations per epoch: 1
+INFO:root:Using AdamW
+/media/backup_16TB/sean/VJEPA/jepa/evals/video_classification_frozen/eval.py:666: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler() if use_bfloat16 else None
+INFO:root:Epoch 1
+> /media/backup_16TB/sean/VJEPA/jepa/src/datasets/video_dataset.py(198)__getitem__()
+-> return buffer, label, clip_indices, sample , index
+(Pdb) Process Process-1:
+Traceback (most recent call last):
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/multiprocessing/process.py", line 315, in _bootstrap
+    self.run()
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/media/backup_16TB/sean/VJEPA/jepa/evals/main.py", line 89, in process_main
+    eval_main(params['eval_name'], args_eval=params,plotter=plotter, validation=validation, debug=debug, grad_cam=grad_cam)
+  File "/media/backup_16TB/sean/VJEPA/jepa/evals/scaffold.py", line 36, in main
+    return importlib.import_module(f'evals.{eval_name}.eval').main(
+  File "/media/backup_16TB/sean/VJEPA/jepa/evals/video_classification_frozen/eval.py", line 322, in main
+    train_acc = run_one_epoch(
+  File "/media/backup_16TB/sean/VJEPA/jepa/evals/video_classification_frozen/eval.py", line 389, in run_one_epoch
+    for itr, data in enumerate(data_loader):
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 708, in __next__
+    data = self._next_data()
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1480, in _next_data
+    return self._process_data(data)
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/site-packages/torch/utils/data/dataloader.py", line 1505, in _process_data
+    data.reraise()
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/site-packages/torch/_utils.py", line 733, in reraise
+    raise exception
+bdb.BdbQuit: Caught BdbQuit in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/site-packages/torch/utils/data/_utils/worker.py", line 349, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/site-packages/torch/utils/data/_utils/fetch.py", line 52, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/site-packages/torch/utils/data/_utils/fetch.py", line 52, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/media/backup_16TB/sean/VJEPA/jepa/src/datasets/video_dataset.py", line 198, in __getitem__
+    return buffer, label, clip_indices, sample , index
+  File "/media/backup_16TB/sean/VJEPA/jepa/src/datasets/video_dataset.py", line 198, in __getitem__
+    return buffer, label, clip_indices, sample , index
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/bdb.py", line 88, in trace_dispatch
+    return self.dispatch_line(frame)
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/bdb.py", line 113, in dispatch_line
+    if self.quitting: raise BdbQuit
+bdb.BdbQuit
+
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/multiprocessing/process.py", line 318, in _bootstrap
+    util._exit_function()
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/multiprocessing/util.py", line 357, in _exit_function
+    p.join()
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/multiprocessing/process.py", line 149, in join
+    res = self._popen.wait(timeout)
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/multiprocessing/popen_fork.py", line 43, in wait
+    return self.poll(os.WNOHANG if timeout == 0.0 else 0)
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/multiprocessing/popen_fork.py", line 27, in poll
+    pid, sts = os.waitpid(self.pid, flag)
+  File "/home/sean/anaconda3/envs/jepa/lib/python3.9/site-packages/torch/utils/data/_utils/signal_handling.py", line 73, in handler
+    _error_if_any_worker_fails()
+RuntimeError: DataLoader worker (pid 2137027) is killed by signal: Terminated. 

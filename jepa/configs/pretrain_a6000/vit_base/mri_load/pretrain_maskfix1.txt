@@ -1,0 +1,9 @@
+globbed paths: /media/backup_16TB/sean/Monai/BrainSlice48_224_224/**/*.mp4
+number of samples: 26001
+ipe : 1083
+include_list: ['OASIS_3', 'NACC_T1_Volume_mri', 'ADNI_MP_RAGE', 'MCSA', 'WU1200', 'OASIS', 'ICBM', 'NACC_all_T1_3D', 'SALD', 'NACC_MPRAGE']
+csv file created at /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1/pretrain_maskfix1.csv
+txt file created at pretrain_maskfix1.txt
+
+python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/vit_tiny/mri_load/debug_mriload.yaml --devices cuda:1 --plotter csv | tee output.log
+python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/vit_base/mri_load/pretrain_ctn_100_epochk400.yaml --devices cuda:0 cuda:1 cuda:2
