@@ -145,6 +145,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     eval_frame_step = args_pretrain.get('frame_step', 4)
     eval_duration = args_pretrain.get('clip_duration', None)
     eval_num_views_per_segment = args_data.get('num_views_per_segment', 1)
+    strategy = args_pretrain.get('strategy','consecutive') # default mri selection is 'consecutive' other is 'skip_1'
 
     # -- DATA AUGS
     cfgs_data_aug = args_eval.get('data_aug',None)
@@ -204,8 +205,12 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     if not os.path.exists(folder):
         os.makedirs(folder, exist_ok=True)
     log_file = os.path.join(folder, f'{tag}_r{rank}.csv')
-    latest_path = os.path.join(folder, f'{tag}-latest.pth.tar')
-
+    latest_path = os.path.join(folder, f'{tag}-best.pth.tar')
+    if not os.path.exists(latest_path):
+        print("\n\n\nLOADING FROM LATEST PATH\n\n\n")
+        latest_path = os.path.join(folder, f'{tag}-latest.pth.tar')
+    else:
+        print("\n\n\nLOADING FROM BEST PATH\n\n\n")
 
     # Initialize model
 
@@ -268,12 +273,16 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
         rank=rank,
         training=False,
         debug=debug,
-        data_aug_dict=data_aug_dict)
+        data_aug_dict=data_aug_dict,
+        strategy=strategy) #+)
 
 
     # TRAIN LOOP
     writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}eval_results.csv'))
-    writer.writerow(["Label", "Prediction", "Fname"])
+    if dataset_type == 'VideoDataset':
+        writer.writerow(["Label", "Prediction", "Fname"])
+    elif dataset_type.lower() == 'mridataset':
+        writer.writerow(["Label", "Prediction", "Fname", "Axis"])
     for epoch in range(1):
         val_acc = run_one_epoch(
             device=device,
@@ -290,7 +299,8 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
             data_loader=val_loader,
             use_bfloat16=use_bfloat16,
             writer=writer,
-            csv_file=csv_file)
+            csv_file=csv_file,
+            dataset_type=dataset_type,)
 
         logger.info('[%5d] test: %.3f%%' % (epoch + 1, val_acc))
     
@@ -313,7 +323,8 @@ def run_one_epoch(
     num_temporal_views,
     attend_across_segments,
     writer,
-    csv_file
+    csv_file,
+    dataset_type
 ):
     
     classifier.train(mode=training)
@@ -325,6 +336,7 @@ def run_one_epoch(
     all_labels = []
     all_predictions = []
     all_clip_names = []  # To store clip names or identifiers
+    all_axis = []  # To store axis information if available
     for itr, data in enumerate(data_loader):
         
         if training:
@@ -368,6 +380,9 @@ def run_one_epoch(
         all_labels.extend(labels.cpu().numpy().flatten())
         all_predictions.extend(predictions.cpu().numpy())
         all_clip_names.extend(data[3])
+        if dataset_type.lower() == 'mridataset':
+            all_axis.extend(data[5].cpu().tolist())
+
         # Compute loss
         if attend_across_segments:
             loss = sum([criterion(o, labels) for o in outputs]) / len(outputs)
@@ -401,7 +416,10 @@ def run_one_epoch(
         logger.info('[%5d] %.3f%% (loss: %.3f) [mem: %.2e]'
                     % (itr, top1_meter.avg, loss,
                         torch.cuda.max_memory_allocated() / 1024.**2))
-    writer.writerows(zip(all_labels, all_predictions,all_clip_names))  # Write rows  # Write rows)
+    if dataset_type.lower() == 'mridataset':
+        writer.writerows(zip(all_labels, all_predictions,all_clip_names, all_axis))
+    else:
+        writer.writerows(zip(all_labels, all_predictions,all_clip_names))  # Write rows  # Write rows)
     
     csv_file.close()
     return top1_meter.avg
@@ -483,7 +501,8 @@ def make_dataloader(
     training=False,
     num_workers=12,
     subset_file=None,
-    debug=False
+    debug=False,
+    strategy='consecutive' #+
 ):
     ar_range = data_aug_dict['ar_range']
     rr_scale = data_aug_dict['rr_scale']
@@ -518,7 +537,8 @@ def make_dataloader(
         copy_data=False,
         drop_last=False,
         subset_file=subset_file,
-        debug=debug,)
+        debug=debug,
+        strategy=strategy,) #+)
     return data_loader
 
 

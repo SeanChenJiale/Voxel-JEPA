@@ -20,7 +20,7 @@ import torch.nn.functional as F
 
 from torch.nn.parallel import DistributedDataParallel
 
-import src.models.vision_transformer as vit
+import src.models.vision_transformer_gradcam as vit_gradcam
 from src.models.attentive_pooler import AttentiveClassifier
 from src.datasets.data_manager import (
     init_data,
@@ -116,7 +116,7 @@ def init_model(
     uniform_power=False,
     checkpoint_key='target_encoder'
 ):
-    encoder = vit.__dict__[model_name](
+    encoder = vit_gradcam.__dict__[model_name](
         img_size=crop_size,
         patch_size=patch_size,
         num_frames=frames_per_clip,
@@ -147,7 +147,8 @@ def make_dataloader(
     allow_segment_overlap=True,
     training=False,
     num_workers=12,
-    subset_file=None
+    subset_file=None,
+    strategy='consecutive'
 ):
     ar_range = data_aug_dict['ar_range']
     rr_scale = data_aug_dict['rr_scale']
@@ -181,7 +182,8 @@ def make_dataloader(
         num_workers=num_workers,
         copy_data=False,
         drop_last=False,
-        subset_file=subset_file)
+        subset_file=subset_file,
+        strategy=strategy)
     return data_loader
 
 def load_pretrained(
@@ -245,15 +247,16 @@ def main(args_eval,plotter, resume_preempt=False, debug=False):
     eval_frame_step = args_pretrain.get('frame_step', 4)
     eval_duration = args_pretrain.get('clip_duration', None)
     eval_num_views_per_segment = args_data.get('num_views_per_segment', 1)
+    strategy = args_pretrain.get('strategy','consecutive') # default mri selection is 'consecutive' other is 'skip_1'
 
     # -- DATA AUGS
     cfgs_data_aug = args_eval.get('data_aug',None)
     if cfgs_data_aug is not None:
-        ar_range = cfgs_data_aug.get('random_resize_aspect_ratio', [3/4, 4/3])
-        rr_scale = cfgs_data_aug.get('random_resize_scale', [0.3, 1.0])
-        motion_shift = cfgs_data_aug.get('motion_shift', False)
-        reprob = cfgs_data_aug.get('reprob', 0.)
-        use_aa = cfgs_data_aug.get('auto_augment', False)
+        ar_range = [1.0, 1.0]
+        rr_scale = [1.0, 1.0]
+        motion_shift =  False
+        reprob = 0.0
+        use_aa = False
         tensor_normalize = cfgs_data_aug.get('normalize', ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225))) #use Imagenet if nor provided
         data_aug_dict = dict(ar_range=ar_range,
                         rr_scale=rr_scale,
@@ -309,7 +312,16 @@ def main(args_eval,plotter, resume_preempt=False, debug=False):
     if not os.path.exists(folder):
         os.makedirs(folder, exist_ok=True)
     log_file = os.path.join(folder, f'{tag}_r{rank}.csv')
-    latest_path = os.path.join(folder, f'{tag}-latest.pth.tar')
+    latest_path = os.path.join(folder, f'{tag}-best.pth.tar')
+    if not os.path.exists(latest_path):
+        print("\n\n\nLOADING FROM LATEST PATH\n\n\n")
+        latest_path = os.path.join(folder, f'{tag}-latest.pth.tar')
+    else:
+        print("\n\n\nLOADING FROM BEST PATH\n\n\n")
+    global gradcam_path
+    gradcam_path = os.path.join(folder, f'{tag}_gradcam')
+    if not os.path.exists(gradcam_path):
+        os.makedirs(gradcam_path, exist_ok=True)
 
 
     # Initialize model
@@ -339,8 +351,11 @@ def main(args_eval,plotter, resume_preempt=False, debug=False):
             attend_across_segments=attend_across_segments
         ).to(device)
     encoder.eval()
+    print("Type of encoder.model:", type(encoder.model))
+    hook = vit_gradcam.ViTGradCAMHook()
+    encoder.model.blocks[-1].register_forward_hook(lambda m, i, o: hook.save_activation(m, i, o))
     for p in encoder.parameters():
-        p.requires_grad = False
+        p.requires_grad = True
 
     # -- init classifier
     classifier = AttentiveClassifier(
@@ -364,30 +379,44 @@ def main(args_eval,plotter, resume_preempt=False, debug=False):
         resolution=resolution,
         frames_per_clip=eval_frames_per_clip,
         frame_step=eval_frame_step,
-        num_segments=eval_num_segments,
         eval_duration=eval_duration,
-        num_views_per_segment=eval_num_views_per_segment,
+        num_segments=eval_num_segments if attend_across_segments else 1,
+        num_views_per_segment=1,
         allow_segment_overlap=True,
         batch_size=batch_size,
         world_size=world_size,
         rank=rank,
         training=False,
-        data_aug_dict=data_aug_dict)
+        data_aug_dict=data_aug_dict,
+        strategy=strategy) #+
     ipe = len(val_loader)
     if ipe != 1: 
         raise Exception
     logger.info(f'Dataloader created... iterations per epoch: {ipe}')
 
+    # -- optimizer and scheduler
+    optimizer, scaler, scheduler, wd_scheduler = init_opt(
+        classifier=classifier,
+        wd=wd,
+        start_lr=start_lr,
+        ref_lr=lr,
+        final_lr=final_lr,
+        iterations_per_epoch=ipe,
+        warmup=warmup,
+        num_epochs=num_epochs,
+        use_bfloat16=use_bfloat16)
 
-    classifier.train()
+    classifier.eval()
     print(classifier)
     for itr, data in enumerate(val_loader):
         print(len(data))
-        print(data[0])
-        print(data[1])
-        print(data[2])
-        print(data[3])
-        print(data[4])
+        # print(data[0]) # this contains a list of clips
+        print(data[0][0][0].shape) # this contains the first temporal clip
+        
+        # print(data[1]) # this contains the labels
+        # print(data[2]) # this contains the indices
+        # print(data[3]) # this contains the video path
+        # print(data[4]) # this contains the axis
 
     val_acc = run_one_epoch(
         device=device,
@@ -402,7 +431,8 @@ def main(args_eval,plotter, resume_preempt=False, debug=False):
         scheduler=scheduler,
         wd_scheduler=wd_scheduler,
         data_loader=val_loader,
-        use_bfloat16=use_bfloat16)
+        use_bfloat16=use_bfloat16,
+        hook=hook)
     
     logger.info('test: %.3f%%' % ( val_acc))
 
@@ -421,36 +451,45 @@ def run_one_epoch(
     num_spatial_views,
     num_temporal_views,
     attend_across_segments,
+    hook=None
 ):
 
     classifier.train(mode=training)
     criterion = torch.nn.CrossEntropyLoss()
     top1_meter = AverageMeter()
-    for itr, data in enumerate(data_loader):
+    saved = False  # Only save the first batch/sample for demonstration
 
+    for itr, data in enumerate(data_loader):
         if training:
             scheduler.step()
             wd_scheduler.step()
 
+        print(f"[GradCAM DEBUG] torch.is_grad_enabled() before forward: {torch.is_grad_enabled()}")
         with torch.cuda.amp.autocast(dtype=torch.float16, enabled=use_bfloat16):
-
-            # Load data and put on GPU
             clips = [
-                [dij.to(device, non_blocking=True) for dij in di]  # iterate over spatial views of clip
-                for di in data[0]  # iterate over temporal index of clip
+                [dij.to(device, non_blocking=True) for dij in di]
+                for di in data[0]
             ]
             clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
             labels = data[1].to(device)
             batch_size = len(labels)
 
-            # Forward and prediction
-            with torch.no_grad():
-                outputs = encoder(clips, clip_indices)
-                if not training:
-                    if attend_across_segments:
-                        outputs = [classifier(o) for o in outputs]
-                    else:
-                        outputs = [[classifier(ost) for ost in os] for os in outputs]
+            outputs = encoder(clips, clip_indices)
+            print(f"[GradCAM DEBUG] After forward: hook.activations is not None: {hook is not None and hasattr(hook, 'activations') and hook.activations is not None}")
+            if hook is not None and hasattr(hook, 'activations') and hook.activations is not None:
+                print("[GradCAM DEBUG] hook.activations.requires_grad:", hook.activations.requires_grad)
+                if hook.activations.requires_grad:
+                    hook.activations.register_hook(hook.save_gradient)
+                else:
+                    print("[GradCAM WARNING] Activations do not require grad. Ensure no torch.no_grad() is used and forward pass is with gradients enabled.")
+            else:
+                print("[GradCAM WARNING] Hook or activations not available at this point.")
+
+            if not training:
+                if attend_across_segments:
+                    outputs = [classifier(o) for o in outputs]
+                else:
+                    outputs = [[classifier(ost) for ost in os] for os in outputs]
             if training:
                 if attend_across_segments:
                     outputs = [classifier(o) for o in outputs]
@@ -462,14 +501,14 @@ def run_one_epoch(
             loss = sum([criterion(o, labels) for o in outputs]) / len(outputs)
         else:
             loss = sum([sum([criterion(ost, labels) for ost in os]) for os in outputs]) / len(outputs) / len(outputs[0])
-        with torch.no_grad():
-            if attend_across_segments:
-                outputs = sum([F.softmax(o, dim=1) for o in outputs]) / len(outputs)
-            else:
-                outputs = sum([sum([F.softmax(ost, dim=1) for ost in os]) for os in outputs]) / len(outputs) / len(outputs[0])
-            top1_acc = 100. * outputs.max(dim=1).indices.eq(labels).sum() / batch_size
-            top1_acc = float(AllReduce.apply(top1_acc))
-            top1_meter.update(top1_acc)
+        # with torch.no_grad():
+        if attend_across_segments:
+            outputs = sum([F.softmax(o, dim=1) for o in outputs]) / len(outputs)
+        else:
+            outputs = sum([sum([F.softmax(ost, dim=1) for ost in os]) for os in outputs]) / len(outputs) / len(outputs[0])
+        top1_acc = 100. * outputs.max(dim=1).indices.eq(labels).sum() / batch_size
+        top1_acc = float(AllReduce.apply(top1_acc))
+        top1_meter.update(top1_acc)
 
         if training:
             if use_bfloat16:
@@ -488,5 +527,111 @@ def run_one_epoch(
             logger.info('[%5d] %.3f%% (loss: %.3f) [mem: %.2e]'
                         % (itr, top1_meter.avg, loss,
                            torch.cuda.max_memory_allocated() / 1024.**2))
+    # Suppose outputs is the model output (logits), and you want Grad-CAM for class idx
+    target_class = outputs.argmax(dim=1)  # or set a specific class index
+    one_hot = torch.zeros_like(outputs)
+    one_hot[0, target_class] = 1
+    outputs.backward(gradient=one_hot, retain_graph=True)
+
+    # Save Grad-CAM relevant tensors for the first sample in the first batch
+    print(f"[GradCAM DEBUG] Before saving: saved={saved}, hook is not None: {hook is not None}, hook.activations is not None: {hasattr(hook, 'activations') and hook.activations is not None}, hook.gradients is not None: {hasattr(hook, 'gradients') and hook.gradients is not None}")
+    if not saved and hook is not None and hasattr(hook, 'activations') and hook.activations is not None and hasattr(hook, 'gradients') and hook.gradients is not None:
+        sample_idx = 0
+        print(f"[GradCAM] Saving Grad-CAM tensors for sample index {sample_idx} in batch {itr}")
+        # Save input sample (first clip, first view, first sample)
+        try:
+            input_sample = clips[0][0][sample_idx].detach().cpu()
+        except Exception:
+            input_sample = None
+        activations = hook.activations[sample_idx].detach().cpu()
+        gradients = hook.gradients[sample_idx].detach().cpu()
+        # Save predicted class (for first output)
+        if isinstance(outputs, list):
+            if isinstance(outputs[0], list):
+                pred_class = outputs[0][0][sample_idx].argmax().item()
+            else:
+                pred_class = outputs[0][sample_idx].argmax().item()
+        else:
+            pred_class = outputs[sample_idx].argmax().item()
+
+        torch.save({
+            'input': input_sample,
+            'activations': activations,
+            'gradients': gradients,
+            'pred_class': pred_class
+        }, os.path.join(gradcam_path, f'gradcam_sample_{itr}_{sample_idx}.pt'))
+        print(f"[GradCAM] Saved Grad-CAM tensors to {os.path.join(gradcam_path, f'gradcam_sample_{itr}_{sample_idx}.pt')}")
+        saved = True
 
     return top1_meter.avg
+
+def load_checkpoint(
+    device,
+    r_path,
+    classifier,
+    opt,
+    scaler
+):
+    try:
+        checkpoint = torch.load(r_path, map_location=torch.device('cpu'))
+        epoch = checkpoint['epoch']
+
+        # -- loading encoder
+        pretrained_dict = checkpoint['classifier']
+        msg = classifier.load_state_dict(pretrained_dict)
+        logger.info(f'loaded pretrained classifier from epoch {epoch} with msg: {msg}')
+
+        # -- loading optimizer
+        opt.load_state_dict(checkpoint['opt'])
+        if scaler is not None:
+            scaler.load_state_dict(checkpoint['scaler'])
+        logger.info(f'loaded optimizers from epoch {epoch}')
+        logger.info(f'read-path: {r_path}')
+        del checkpoint
+
+    except Exception as e:
+        logger.info(f'Encountered exception when loading checkpoint {e}')
+        epoch = 0
+
+    return classifier, opt, scaler, epoch
+
+def init_opt(
+    classifier,
+    iterations_per_epoch,
+    start_lr,
+    ref_lr,
+    warmup,
+    num_epochs,
+    wd=1e-6,
+    final_wd=1e-6,
+    final_lr=0.0,
+    use_bfloat16=False
+):
+    param_groups = [
+        {
+            'params': (p for n, p in classifier.named_parameters()
+                       if ('bias' not in n) and (len(p.shape) != 1))
+        }, {
+            'params': (p for n, p in classifier.named_parameters()
+                       if ('bias' in n) or (len(p.shape) == 1)),
+            'WD_exclude': True,
+            'weight_decay': 0
+        }
+    ]
+
+    logger.info('Using AdamW')
+    optimizer = torch.optim.AdamW(param_groups)
+    scheduler = WarmupCosineSchedule(
+        optimizer,
+        warmup_steps=int(warmup*iterations_per_epoch),
+        start_lr=start_lr,
+        ref_lr=ref_lr,
+        final_lr=final_lr,
+        T_max=int(num_epochs*iterations_per_epoch))
+    wd_scheduler = CosineWDSchedule(
+        optimizer,
+        ref_wd=wd,
+        final_wd=final_wd,
+        T_max=int(num_epochs*iterations_per_epoch))
+    scaler = torch.cuda.amp.GradScaler() if use_bfloat16 else None
+    return optimizer, scaler, scheduler, wd_scheduler

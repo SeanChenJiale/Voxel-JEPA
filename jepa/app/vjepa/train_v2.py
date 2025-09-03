@@ -114,6 +114,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
     uniform_power = cfgs_model.get('uniform_power', True)
     use_mask_tokens = cfgs_model.get('use_mask_tokens', True)
     zero_init_mask_tokens = cfgs_model.get('zero_init_mask_tokens', True)
+    blockwise_patch_embed= cfgs_model.get('blockwise_patch_embed', False)  #+
 
     # -- DATA
     cfgs_data = args.get('data')
@@ -136,6 +137,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
     filter_short_videos = cfgs_data.get('filter_short_videos', False)
     decode_one_clip = cfgs_data.get('decode_one_clip', True)
     log_resource_util_data = cfgs_data.get('log_resource_utilization', False)
+    strategy = cfgs_data.get('strategy','consecutive') # default mri selection is 'consecutive' other is 'skip_1'
 
     # -- DATA AUGS
     cfgs_data_aug = args.get('data_aug')
@@ -252,6 +254,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
         pred_depth=pred_depth,
         pred_embed_dim=pred_embed_dim,
         use_sdpa=use_sdpa,
+        blockwise_patch_embed= blockwise_patch_embed, #+
     )
     target_encoder = copy.deepcopy(encoder)
 
@@ -303,7 +306,8 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
          world_size=world_size,
          pin_mem=pin_mem,
          rank=rank,
-         log_dir=folder if log_resource_util_data else None)
+         log_dir=folder if log_resource_util_data else None,
+         strategy=strategy,)
     try:
         _dlen = len(unsupervised_loader)
     except Exception:  # Different interface for webdataset
@@ -454,7 +458,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                 # logger.info(f"shape of udata[2] {[udat.shape for udat in udata[2]]}")
                 # logger.info(f"len of udata[2] {(udata[2])}")
             # Usage:
-            if debug and dataset_type == "MriDataset":
+            if debug and dataset_type.lower() == "mridataset":
                 print("\n\n\n\n saving clip \n\n\n\n")
                 save_clip_frames_as_grid(udata[0][0][0],label = f"{udata[3][0]}__{udata[5][0]}", filename=os.path.join(mask_dir_path,f"epoch{epoch}_itr{itr}_clip0.png"))
             def load_clips():

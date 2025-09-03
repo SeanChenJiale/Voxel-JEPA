@@ -113,11 +113,11 @@ class ClipAggregation(nn.Module):
             self.pos_embed.copy_(torch.from_numpy(sincos).float().unsqueeze(0))
 
     def forward(self, x, clip_indices=None):
-
+        
         num_clips = len(x)
         num_views_per_clip = len(x[0])
         B, C, T, H, W = x[0][0].size()
-
+        
         # Concatenate all spatial and temporal views along batch dimension
         x = [torch.cat(xi, dim=0) for xi in x]
         x = torch.cat(x, dim=0)
@@ -229,7 +229,7 @@ class VideoTransform(object):
         self.motion_shift = motion_shift
         self.crop_size = crop_size
         self.normalize = torch.tensor(normalize)
-
+        ## checked and it passes through this function 14_aug
         self.autoaug_transform = video_transforms.create_random_augment(
             input_size=(crop_size, crop_size),
             auto_augment='rand-m7-n4-mstd0.5-inc1',
@@ -249,22 +249,37 @@ class VideoTransform(object):
         )
 
     def __call__(self, buffer):
+        # debug = True
+        # if debug:
+        #     import os
+        #     from torchvision.utils import save_image
+        #     debug_dir = "/media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/video_classification_frozen"
+        #     vid_or_mri_str = "debug_vid"
+        #     debug_dir = os.path.join(debug_dir, vid_or_mri_str,"iteration_epoch_clip")
+        #     torch.save(buffer, os.path.join(debug_dir, "utils_debug_dataset_before_transform_tensor.pt"))
 
+                
         if not self.training:
             return [self.eval_transform(buffer)]
+        
+        if buffer.dtype != torch.uint8:  # 20/8 important line. pil takes in [0,1]
+            # Normalize to [0, 1] if not already in that range
+            buffer = buffer / 255
 
         buffer = [transforms.ToPILImage()(frame) for frame in buffer]
-
         if self.auto_augment:
             buffer = self.autoaug_transform(buffer)
-
+        
         buffer = [transforms.ToTensor()(img) for img in buffer]
+        
         buffer = torch.stack(buffer)  # T C H W
         buffer = buffer.permute(0, 2, 3, 1)  # T H W C
-
+        
+        # if debug: 
+        #     torch.save(buffer, os.path.join(debug_dir, "utils_debug_dataset_after_tensor.pt"))
         buffer = tensor_normalize(buffer, self.normalize[0], self.normalize[1])
         buffer = buffer.permute(3, 0, 1, 2)  # T H W C -> C T H W
-
+        
         buffer = self.spatial_transform(
             images=buffer,
             target_height=self.crop_size,
@@ -279,7 +294,8 @@ class VideoTransform(object):
             buffer = buffer.permute(1, 0, 2, 3)
             buffer = self.erase_transform(buffer)
             buffer = buffer.permute(1, 0, 2, 3)
-
+        # if debug: 
+        #     torch.save(buffer, os.path.join(debug_dir, "utils_debug_dataset_end_tensor.pt"))
         return [buffer]
 
 
@@ -319,7 +335,6 @@ class EvalVideoTransform(object):
                 view = buffer[:, :, start:start+side_len, :]
             view = self.to_tensor(view)
             all_views.append(view)
-
         return all_views
 
 
@@ -331,7 +346,7 @@ def tensor_normalize(tensor, mean, std):
         mean (tensor or list): mean value to subtract.
         std (tensor or list): std to divide.
     """
-    if tensor.dtype == torch.uint8 or tensor.dtype == torch.float32 or tensor.dtype == torch.float16 :
+    if  tensor.dtype == torch.uint8: # it doesnt pass through this if statement as tensor is float32
         tensor = tensor.float()
         tensor = tensor / 255.0
     if type(mean) == list:

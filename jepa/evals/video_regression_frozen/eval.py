@@ -375,7 +375,7 @@ def run_one_epoch(
     classifier.train(mode=training)
     criterion = torch.nn.MSELoss()  # Use Mean Squared Error for regression
     loss_meter = AverageMeter()  # Track the average loss
-
+    mae_meter = AverageMeter() # Track the average MAE
 
     for itr, data in enumerate(data_loader):
         if training:
@@ -416,7 +416,8 @@ def run_one_epoch(
             predictions = sum([sum(os) for os in outputs]) / len(outputs) / len(outputs[0])  # Average predictions
         # Compute MAE (Mean Absolute Error)
         with torch.no_grad():
-            mae = torch.mean(torch.abs(predictions - labels))
+            batch_mae = torch.mean(torch.abs(predictions - labels)).item()
+        mae_meter.update(batch_mae, n=labels.size(0))
         # Backward pass and optimization
         if training:
             if use_bfloat16:
@@ -434,10 +435,10 @@ def run_one_epoch(
         # Logging
         if itr % 20 == 0:
             logger.info('[%5d] Loss: %.3f, MAE: %.3f [Mem: %.2e]'
-                        % (itr, loss_meter.avg, mae.item(),
+                        % (itr, loss_meter.avg, mae_meter.avg,
                            torch.cuda.max_memory_allocated() / 1024.**2))
         
-    return loss_meter.avg, mae.item()
+    return loss_meter.avg, mae_meter.avg
 
 
 def load_checkpoint(

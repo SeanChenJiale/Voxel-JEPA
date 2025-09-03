@@ -37,6 +37,7 @@ def init_data(
     ipe=300,
     log_dir=None,
     debug=False,
+    strategy='consecutive'
 ):
     print(f'init_data: {data}')
     if (data.lower() == 'imagenet') \
@@ -105,5 +106,7 @@ def init_data(
             rank=rank,
             world_size=world_size,
             log_dir=log_dir,
-            debug=debug,)  
+            debug=debug,
+            strategy=strategy
+            )  
     return (data_loader, dist_sampler)

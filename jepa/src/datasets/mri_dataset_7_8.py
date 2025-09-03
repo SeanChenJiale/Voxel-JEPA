@@ -48,7 +48,8 @@ def make_mridataset(
     world_size=1,
     pin_mem=True,
     log_dir=None,
-    debug=False
+    debug=False,
+    strategy='consecutive'
         ):
     dataset = MRIDataset(
         data_paths=data_paths,
@@ -62,7 +63,8 @@ def make_mridataset(
         filter_long_volumes=filter_long_volumes,
         duration=duration,
         shared_transform=shared_transform,
-        transform=transform
+        transform=transform,
+        strategy=strategy,
 
     )
     logger.info('MRIDataset dataset created')
@@ -109,6 +111,7 @@ class MRIDataset(torch.utils.data.Dataset):
         duration=None,
         debug=False, # for debugging
         save_csv_path=None, # for debugging
+        strategy='consecutive' # 'default' or 'slice_based'
     ):
         self.data_paths = data_paths
         self.datasets_weights = datasets_weights
@@ -122,7 +125,7 @@ class MRIDataset(torch.utils.data.Dataset):
         self.filter_short_volumes = filter_short_volumes
         self.filter_long_volumes = filter_long_volumes
         self.duration = duration
-
+        self.strategy = strategy
         # Load video paths and labels
         samples, labels, axis= [], [], []
         self.num_samples_per_dataset = []
@@ -157,11 +160,11 @@ class MRIDataset(torch.utils.data.Dataset):
         axis = int(axis) # Modified new lines
 
         # Transpose volume to make slicing axis last
-        if axis == 0:
+        if axis == 0: # coronal
             filtered_data = np.transpose(filtered_data, (1, 2, 0))
-        elif axis == 1:
+        elif axis == 1: #axial
             filtered_data = np.transpose(filtered_data, (2, 0, 1))
-
+        # 2 = sagittal, no change needed
 
         # Validate enough slices
         if filtered_data.shape[0] < self.frames_per_volume:
@@ -182,19 +185,53 @@ class MRIDataset(torch.utils.data.Dataset):
         num_slices = 48
         first_non_black = non_black_indices[0]
         last_non_black = non_black_indices[-1]
-
-        # Center 48 slices around the middle of the non-black region
         center = (first_non_black + last_non_black) // 2
-        half = num_slices // 2
-        start = max(center - half, 0)
-        end = start + num_slices
+        available_slices = last_non_black - first_non_black + 1
 
-        # Adjust if end goes beyond available slices
-        if end > filtered_data.shape[0]:
-            end = filtered_data.shape[0]
-            start = max(end - num_slices, 0)
+        if self.strategy == 'consecutive':
+            # Center 48 slices around the middle of the non-black region
+            half = num_slices // 2
+            start = max(center - half, 0)
+            end = start + num_slices
 
-        indices = np.arange(start, end)
+            # Adjust if end goes beyond available slices
+            if end > filtered_data.shape[0]:
+                end = filtered_data.shape[0]
+                start = max(end - num_slices, 0)
+
+            indices = np.arange(start, end)
+        elif self.strategy == 'skip_1':
+            half = num_slices // 2
+            start = max(center - half*2, 0)
+            end = start + num_slices*2
+            if end > filtered_data.shape[0]:
+                end = filtered_data.shape[0]
+                start = max(end - num_slices*2, 0)
+            indices = np.arange(start, end, 2)
+        elif self.strategy == 'AD':
+            if axis == 0: # coronal
+                
+                start = max (center - 12,0)
+                end = start + 24
+                indices = np.arange(start, end)
+                end = start
+                start = max(end - 48,first_non_black)
+                indices = np.concatenate(( np.arange(start, end,2), indices))
+            elif axis == 1 or axis == 2: #axial or sagittal
+                quartile = available_slices // 4
+                start = first_non_black + quartile
+                end = first_non_black + 3*quartile
+                if end - start < 48:
+                    start = max(center - 24, 0)
+                    end = start + 48
+                num_slices_to_work_with = end - start
+                step = num_slices_to_work_with // 48
+                indices = np.arange(start, end, step) #take the center 48 in the list
+                if len(indices) > 48:
+                    center = len(indices) // 2
+                    half = 48 // 2
+                    indices = indices[center - half : center + half]
+                # find  
 
         try:
             slices = filtered_data[indices]  # [T, H, W]

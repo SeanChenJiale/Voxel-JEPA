@@ -145,6 +145,24 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     eval_duration = args_pretrain.get('clip_duration', None)
     eval_num_views_per_segment = args_data.get('num_views_per_segment', 1)
 
+    # -- DATA AUGS
+    cfgs_data_aug = args_eval.get('data_aug',None)
+    if cfgs_data_aug is not None:
+        ar_range = cfgs_data_aug.get('random_resize_aspect_ratio', [3/4, 4/3])
+        rr_scale = cfgs_data_aug.get('random_resize_scale', [0.3, 1.0])
+        motion_shift = cfgs_data_aug.get('motion_shift', False)
+        reprob = cfgs_data_aug.get('reprob', 0.)
+        use_aa = cfgs_data_aug.get('auto_augment', False)
+        tensor_normalize = cfgs_data_aug.get('normalize', ((0.485, 0.456, 0.406),(0.229, 0.224, 0.225))) #use Imagenet if nor provided
+        data_aug_dict = dict(ar_range=ar_range,
+                        rr_scale=rr_scale,
+                        motion_shift=motion_shift,
+                        tensor_normalize=tensor_normalize)
+    else:
+        data_aug_dict = dict(ar_range=[3/4, 4/3],
+                        rr_scale=[0.3, 1.0],
+                        motion_shift=False,
+                        tensor_normalize=((0.485, 0.456, 0.406),(0.229, 0.224, 0.225)))
     # -- OPTIMIZATION
     args_opt = args_eval.get('optimization')
     resolution = args_opt.get('resolution', 224)
@@ -246,12 +264,17 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
         batch_size=batch_size,
         world_size=world_size,
         rank=rank,
-        training=False)
+        training=False,
+        debug=debug,
+        data_aug_dict=data_aug_dict)
 
 
     # TRAIN LOOP
     writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name, f"{tag}eval_results.csv"))
-    writer.writerow(["Iteration", "Accuracy", "Loss"])
+    if dataset_type == 'VideoDataset':
+        writer.writerow(["Label", "Prediction", "Fname"])
+    elif dataset_type.lower() == 'mridataset':
+        writer.writerow(["Label", "Prediction", "Fname", "Axis"])
     for epoch in range(1):
         val_acc, val_mae = run_one_epoch(
             device=device,
@@ -268,7 +291,8 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
             data_loader=val_loader,
             use_bfloat16=use_bfloat16,
             writer=writer,
-            csv_file=csv_file)
+            csv_file=csv_file,
+            dataset_type=dataset_type,)
 
         logger.info('[%5d] test: %.3f%%' % (epoch + 1, val_mae))
     
@@ -291,12 +315,14 @@ def run_one_epoch(
     num_temporal_views,
     attend_across_segments,
     writer,
-    csv_file
+    csv_file,
+    dataset_type
 ):
 
     classifier.train(mode=training)
     criterion = torch.nn.MSELoss()  # Use Mean Squared Error for regression
     loss_meter = AverageMeter()  # Track the average loss
+    mae_meter = AverageMeter() # Track the average MAE
 
     print(f"Number of samples in the dataset: {len(data_loader.dataset)}")
     print(f"Number of batches in the DataLoader: {len(data_loader)}")
@@ -305,6 +331,7 @@ def run_one_epoch(
     all_labels = []
     all_predictions = []
     all_clip_names = []  # To store clip names or identifiers
+    all_axis = []  # To store axis information if available
 
     for itr, data in enumerate(data_loader):
         
@@ -357,11 +384,14 @@ def run_one_epoch(
         all_labels.extend(labels.cpu().numpy().flatten())
         all_predictions.extend(predictions.cpu().numpy().flatten())
         all_clip_names.extend(data[3])  # Assuming `data[3]` contains clip names or identifiers
+        if dataset_type.lower() == 'mridataset':
+            all_axis.extend(data[5].cpu().tolist())  # .cpu() prevents any potential GPU errors if data[5] is on GPU       
         #### 
 
         # Compute MAE (Mean Absolute Error)
         with torch.no_grad():
-            mae = torch.mean(torch.abs(predictions - labels))
+            batch_mae = torch.mean(torch.abs(predictions - labels)).item()
+        mae_meter.update(batch_mae, n=labels.size(0))
         # Backward pass and optimization
         if training:
             if use_bfloat16:
@@ -377,13 +407,16 @@ def run_one_epoch(
             optimizer.zero_grad()
 
         logger.info('[%5d] Loss: %.3f, MAE: %.3f [Mem: %.2e]'
-                    % (itr, loss_meter.avg, mae.item(),
+                    % (itr, loss_meter.avg, mae_meter.avg,
                         torch.cuda.max_memory_allocated() / 1024.**2))
     # Save labels and predictions to a CSV file
-    writer.writerows(zip(all_labels, all_predictions,all_clip_names))  # Write rows  # Write rows)
+    if dataset_type.lower() == 'mridataset':
+        writer.writerows(zip(all_labels, all_predictions,all_clip_names, all_axis))
+    else:
+        writer.writerows(zip(all_labels, all_predictions,all_clip_names))  # Write rows  # Write rows)
     
     csv_file.close()
-    return loss_meter.avg, mae.item()
+    return loss_meter.avg, mae_meter.avg
 
 
 def load_checkpoint(
@@ -444,12 +477,12 @@ def load_pretrained(
     del checkpoint
     return encoder
 
-
 def make_dataloader(
     root_path,
     batch_size,
     world_size,
     rank,
+    data_aug_dict,
     dataset_type='VideoDataset',
     resolution=224,
     frames_per_clip=16,
@@ -460,8 +493,12 @@ def make_dataloader(
     allow_segment_overlap=True,
     training=False,
     num_workers=12,
-    subset_file=None
+    subset_file=None,
+    debug=False
 ):
+    ar_range = data_aug_dict['ar_range']
+    rr_scale = data_aug_dict['rr_scale']
+    tensor_normalize = data_aug_dict['tensor_normalize']
     # Make Video Transforms
     transform = make_transforms(
         training=training,
@@ -473,6 +510,7 @@ def make_dataloader(
         auto_augment=True,
         motion_shift=False,
         crop_size=resolution,
+        normalize=tensor_normalize
     )
 
     data_loader, _ = init_data(
@@ -490,7 +528,8 @@ def make_dataloader(
         num_workers=num_workers,
         copy_data=False,
         drop_last=False,
-        subset_file=subset_file)
+        subset_file=subset_file,
+        debug=debug,)
     return data_loader
 
 

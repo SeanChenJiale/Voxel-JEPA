@@ -55,12 +55,12 @@ pretrain:
   folder: /media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/
   checkpoint: vitbase_mri_ctn_50epoch_from_k400-latest.pth.tar # name of pretrained model file inside folder
   write_tag: debug
-
+  strategy: AD
 logging:
   project: debug-mri-ad # Don't change this
   run_name: debug # Please change every time before running, this is the name for wandb run file
 port: 42006
   ##todo run tomorrow 9th april.
   #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/pretrain_maskfix_tiny/tiny_AD_binclass_slice48_mp4/vitl16_brainslice48_ADbinclassifier_lr_half_fix10.yaml --devices cuda:0>/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny/video_classification_frozen/vit_tiny_brainslice48_ADbinclass/lr_half_fix10.log 2>&1
-  #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/vit_base/AD_bin/mri_load/debug/debug_non_zoom.yaml --devices cuda:1 --plotter csv --debug True 2>&1 | tee /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/vit_base/AD_bin/mri_load/debug/output.log
+  #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/vit_base/AD_bin/mri_load/debug/debug.yaml --devices cuda:1 --plotter csv --debug True 2>&1 | tee /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/vit_base/AD_bin/mri_load/debug/output.log
   
