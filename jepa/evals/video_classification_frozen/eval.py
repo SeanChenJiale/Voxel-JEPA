@@ -100,6 +100,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     uniform_power = args_pretrain.get('uniform_power', False)
     pretrained_path = os.path.join(pretrain_folder, ckp_fname)
     blockwise_patch_embed= args_pretrain.get('blockwise_patch_embed', False)  #+
+    strategy = args_pretrain.get('strategy','consecutive') # default mri selection is 'consecutive' other is 'skip_1'
     # Optional [for Video model]:
     tubelet_size = args_pretrain.get('tubelet_size', 2)
     pretrain_frames_per_clip = args_pretrain.get('frames_per_clip', 1)
@@ -133,7 +134,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     eval_frame_step = args_pretrain.get('frame_step', 4)
     eval_duration = args_pretrain.get('clip_duration', None)
     eval_num_views_per_segment = args_data.get('num_views_per_segment', 1)
-    strategy = args_pretrain.get('strategy','consecutive') # default mri selection is 'consecutive' other is 'skip_1'
+    
 
     # -- OPTIMIZATION
     args_opt = args_eval.get('optimization')
@@ -422,6 +423,7 @@ def run_one_epoch(
                 [dij.to(device, non_blocking=True) for dij in di]  # iterate over spatial views of clip
                 for di in data[0]  # iterate over temporal index of clip
             ]
+            # import pdb; pdb.set_trace()
             if debug and itr == 0 :
                 torch.save(clips[0][0], os.path.join(mask_dir_path, "debug_input_tensor.pt"))
                 print(f"Saved input tensor to {os.path.join(mask_dir_path, 'debug_input_tensor.pt')}")
@@ -690,6 +692,7 @@ def init_opt(
         ref_wd=wd,
         final_wd=final_wd,
         T_max=int(num_epochs*iterations_per_epoch))
+
     scaler = torch.cuda.amp.GradScaler() if use_bfloat16 else None
     return optimizer, scaler, scheduler, wd_scheduler
 

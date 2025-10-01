@@ -53,6 +53,10 @@ from evals.video_classification_frozen.utils import (
     FrameAggregation
 )
 
+from evals.video_classification_frozen.confusion_matrix import (
+    plot_confusion_matrix
+)
+
 logging.basicConfig()
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -129,6 +133,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     use_SiLU = args_pretrain.get('use_silu', False)
     tight_SiLU = args_pretrain.get('tight_silu', True)
     uniform_power = args_pretrain.get('uniform_power', False)
+    strategy = args_pretrain.get('strategy','consecutive') # default mri selection is 'consecutive' other is 'skip_1'
     pretrained_path = os.path.join(pretrain_folder, ckp_fname)
     # Optional [for Video model]:
     tubelet_size = args_pretrain.get('tubelet_size', 2)
@@ -145,7 +150,9 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     eval_frame_step = args_pretrain.get('frame_step', 4)
     eval_duration = args_pretrain.get('clip_duration', None)
     eval_num_views_per_segment = args_data.get('num_views_per_segment', 1)
-    strategy = args_pretrain.get('strategy','consecutive') # default mri selection is 'consecutive' other is 'skip_1'
+    if num_classes > 2:
+        is_multiclass = True
+    else: is_multiclass = False
 
     # -- DATA AUGS
     cfgs_data_aug = args_eval.get('data_aug',None)
@@ -280,9 +287,9 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     # TRAIN LOOP
     writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}eval_results.csv'))
     if dataset_type == 'VideoDataset':
-        writer.writerow(["Label", "Prediction", "Fname"])
+        writer.writerow(["Label", "Prediction", "Fname", "Probabilities"])
     elif dataset_type.lower() == 'mridataset':
-        writer.writerow(["Label", "Prediction", "Fname", "Axis"])
+        writer.writerow(["Label", "Prediction", "Fname", "Axis", "Probabilities"])
     for epoch in range(1):
         val_acc = run_one_epoch(
             device=device,
@@ -304,6 +311,8 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
 
         logger.info('[%5d] test: %.3f%%' % (epoch + 1, val_acc))
     
+    print(f"Validation results saved to {os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}eval_results.csv')}")
+    plot_confusion_matrix(os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}eval_results.csv'),is_multiclass)
 
     #######################
 
@@ -337,6 +346,7 @@ def run_one_epoch(
     all_predictions = []
     all_clip_names = []  # To store clip names or identifiers
     all_axis = []  # To store axis information if available
+    all_probabilities = []
     for itr, data in enumerate(data_loader):
         
         if training:
@@ -377,6 +387,8 @@ def run_one_epoch(
                 )
 
         # Save labels and predictions
+
+        all_probabilities.extend(outputs[0][0].cpu().numpy())
         all_labels.extend(labels.cpu().numpy().flatten())
         all_predictions.extend(predictions.cpu().numpy())
         all_clip_names.extend(data[3])
@@ -417,10 +429,10 @@ def run_one_epoch(
                     % (itr, top1_meter.avg, loss,
                         torch.cuda.max_memory_allocated() / 1024.**2))
     if dataset_type.lower() == 'mridataset':
-        writer.writerows(zip(all_labels, all_predictions,all_clip_names, all_axis))
+        writer.writerows(zip(all_labels, all_predictions,all_clip_names, all_axis, all_probabilities))  # Write rows
     else:
-        writer.writerows(zip(all_labels, all_predictions,all_clip_names))  # Write rows  # Write rows)
-    
+        writer.writerows(zip(all_labels, all_predictions,all_clip_names, all_probabilities))  # Write rows  # Write rows)
+
     csv_file.close()
     return top1_meter.avg
 

@@ -15,16 +15,13 @@ try:
     os.environ['CUDA_VISIBLE_DEVICES'] = os.environ['SLURM_LOCALID']
 except Exception:
     pass
-
 import copy
 import time
 import numpy as np
-
 import torch
 import torch.multiprocessing as mp
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel
-
 from src.datasets.data_manager import init_data
 from src.masks.random_tube import MaskCollator as TubeMaskCollator
 from src.masks.multiblock3d import MaskCollator as MB3DMaskCollator
@@ -38,14 +35,12 @@ from src.utils.logging import (
     adamw_logger,
     AverageMeter)
 from src.utils.tensors import repeat_interleave_batch
-
 from app.vjepa.utils import (
     load_checkpoint,
     init_video_model,
     init_opt,
 )
 from app.vjepa.transforms import make_transforms
-
 
 # --
 log_timings = True
@@ -58,14 +53,14 @@ np.random.seed(_GLOBAL_SEED)
 torch.manual_seed(_GLOBAL_SEED)
 torch.backends.cudnn.benchmark = True
 
-
 logger = get_logger(__name__)
 
-
 def main(args, resume_preempt=False,debug=False,save_mask=False):
+    
     # ----------------------------------------------------------------------- #
     #  PASSED IN PARAMS FROM CONFIG FILE
     # ----------------------------------------------------------------------- #
+
     if debug:
         print('\n\n')
         print('========================')
@@ -94,6 +89,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
     use_sdpa = cfgs_meta.get('use_sdpa', False)
     which_dtype = cfgs_meta.get('dtype')
     logger.info(f'{which_dtype=}')
+
     if which_dtype.lower() == 'bfloat16':
         dtype = torch.bfloat16
         mixed_precision = True
@@ -223,6 +219,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
     if args.get("plotter", "csv") == "wandb" and rank == 0:
         from src.utils.logging import WandBCSVLogger
         logger_impl = WandBCSVLogger(csv_path=log_file)
+        
     else:
         logger_impl = CSVLogger(
             log_file,
@@ -445,6 +442,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                 udata, masks_enc, masks_pred = next(loader)
             assert len(masks_enc) == len(masks_pred), \
                 'Currently require num encoder masks = num predictor masks'
+            # import pdb; pdb.set_trace()
                 # logger.info(f"len of udata, {len(udata)}")
                 # logger.info(f"DEBUG shape of each mask in mask_enc BEFORE load_clips: {[mask.shape for mask in masks_enc]}")
                 # logger.info(f"DEBUG shape of each mask in mask_pred BEFORE load_clips: {[mask.shape for mask in masks_pred]}")
@@ -747,6 +745,11 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
         # -- Save Checkpoint
         logger.info('avg. loss %.3f' % loss_meter.avg)
         if not debug: # since debugging dont save
+            # save every 5 epochs as a new file
+            if epoch % 5 == 0:
+                checkpoint_path = latest_path.replace('latest', f'ep{epoch}')
+                save_checkpoint(epoch + 1, checkpoint_path)
+                
             # -- Save Last
             if epoch % checkpoint_freq == 0 or epoch == (num_epochs - 1):
                 save_checkpoint(epoch + 1, latest_path)

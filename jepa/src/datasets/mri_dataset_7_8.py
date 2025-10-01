@@ -232,7 +232,35 @@ class MRIDataset(torch.utils.data.Dataset):
                     half = 48 // 2
                     indices = indices[center - half : center + half]
                 # find  
-
+        elif self.strategy == 'AD2':
+            if axis == 0: # coronal
+                # Focus on hippocampus (middle-posterior) and parietal regions
+                # Move sampling towards posterior (larger indices)
+                start = max(center - 12, first_non_black)  # Start slightly anterior to center
+                end = start + 36  # Take 36 consecutive slices (more hippocampus coverage)
+                indices_posterior = np.arange(start, end)
+                
+                # Add some anterior slices with sparser sampling for context
+                anterior_end = start
+                anterior_start = max(anterior_end - 24, first_non_black)
+                indices_anterior = np.arange(anterior_start, anterior_end, 2)  # Every 2nd slice
+                
+                # Concatenate: anterior context + dense hippocampus region
+                indices = np.concatenate((indices_anterior, indices_posterior))
+            elif axis == 1 or axis == 2: #axial or sagittal
+                quartile = available_slices // 4
+                start = first_non_black + quartile
+                end = first_non_black + 3*quartile
+                if end - start < 48:
+                    start = max(center - 24, 0)
+                    end = start + 48
+                num_slices_to_work_with = end - start
+                step = num_slices_to_work_with // 48
+                indices = np.arange(start, end, step) #take the center 48 in the list
+                if len(indices) > 48:
+                    center = len(indices) // 2
+                    half = 48 // 2
+                    indices = indices[center - half : center + half]
         try:
             slices = filtered_data[indices]  # [T, H, W]
         except IndexError as e:

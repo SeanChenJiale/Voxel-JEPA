@@ -14,6 +14,7 @@ import torch.distributed as dist
 from app.scaffold import main as app_main  # Entry point for the pretraining pipeline
 from src.utils.distributed import init_distributed  # Initializes distributed GPU communication
 import os
+import socket
 # Argument parser for CLI inputs
 parser = argparse.ArgumentParser()
 
@@ -91,21 +92,39 @@ def process_main(rank, fname, world_size, devices, plotter,debug,save_mask): #de
     
     # Launch the app with loaded config
     app_main(params['app'], args=params, debug=debug, save_mask=save_mask)  # Start pretraining via app.scaffold.main
-
+def get_free_port():
+    """Finds a free port by letting the OS pick one."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))  # Bind to any free port
+        return s.getsockname()[1]  # Return the port number assigned
 
 if __name__ == '__main__':
-    args = parser.parse_args() 
-    # import pdb; pdb.set_trace()
-    num_gpus = len(args.devices)  
+    args = parser.parse_args()
+    num_gpus = len(args.devices)
     params = None
     with open(args.fname, 'r') as y_file:
         params = yaml.load(y_file, Loader=yaml.FullLoader)
 
+    # If port is specified, try to use it; otherwise, pick a free port automatically
+    port = params.get('port', None)
+    if port is None:
+        port = get_free_port()
+        print(f"No port specified. Using automatically selected free port: {port}")
+    else:
+        # Check if specified port is free, else pick a free one
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(('localhost', port))
+            except OSError:
+                print(f"Port {port} is in use. Picking a free port automatically.")
+                port = get_free_port()
+    print(port)
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(params['port'])
-    mp.set_start_method('spawn')  
+    os.environ["MASTER_PORT"] = str(port)
+    mp.set_start_method('spawn')
+    # process_main(0, args.fname, num_gpus, args.devices, args.plotter, args.debug, args.save_mask) # For debugging with a single process
     for rank in range(num_gpus):  # Loop over GPUs
         mp.Process(  # Create a process for each GPU
             target=process_main,  
             args=(rank, args.fname, num_gpus, args.devices, args.plotter, args.debug, args.save_mask) #args=(rank, args.fname, num_gpus, args.devices)  # Pass args to each process
-        ).start()  
+        ).start() 

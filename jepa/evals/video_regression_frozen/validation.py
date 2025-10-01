@@ -129,6 +129,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     tight_SiLU = args_pretrain.get('tight_silu', True)
     uniform_power = args_pretrain.get('uniform_power', False)
     pretrained_path = os.path.join(pretrain_folder, ckp_fname)
+    strategy = args_pretrain.get('strategy','consecutive') # default mri selection is 'consecutive' other is 'skip_1'
     # Optional [for Video model]:
     tubelet_size = args_pretrain.get('tubelet_size', 2)
     pretrain_frames_per_clip = args_pretrain.get('frames_per_clip', 1)
@@ -203,8 +204,12 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     if not os.path.exists(folder):
         os.makedirs(folder, exist_ok=True)
     log_file = os.path.join(folder, f'{tag}_r{rank}.csv')
-    latest_path = os.path.join(folder, f'{tag}-latest.pth.tar')
-
+    latest_path = os.path.join(folder, f'{tag}-best.pth.tar')
+    if not os.path.exists(latest_path):
+        print("\n\n\nLOADING FROM LATEST PATH\n\n\n")
+        latest_path = os.path.join(folder, f'{tag}-latest.pth.tar')
+    else:
+        print("\n\n\nLOADING FROM BEST PATH\n\n\n")
 
     # Initialize model
 
@@ -266,7 +271,8 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
         rank=rank,
         training=False,
         debug=debug,
-        data_aug_dict=data_aug_dict)
+        data_aug_dict=data_aug_dict,
+        strategy=strategy) #+
 
 
     # TRAIN LOOP
@@ -494,7 +500,8 @@ def make_dataloader(
     training=False,
     num_workers=12,
     subset_file=None,
-    debug=False
+    debug=False,
+    strategy='consecutive' #+
 ):
     ar_range = data_aug_dict['ar_range']
     rr_scale = data_aug_dict['rr_scale']
@@ -529,7 +536,8 @@ def make_dataloader(
         copy_data=False,
         drop_last=False,
         subset_file=subset_file,
-        debug=debug,)
+        debug=debug,
+        strategy=strategy,) #+
     return data_loader
 
 

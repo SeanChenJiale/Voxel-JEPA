@@ -129,8 +129,10 @@ class WandBCSVLoggerEval(CSVLogger):              # Eval logger variant for wand
         self.csv_path = csv_path
         self.fields = [
             ('%d', 'epoch'),
+            ('%.5f', 'train_acc'),
+            ('%.5f', 'val_acc'),
             ('%.5f', 'loss'),
-            ('%.5f', 'acc')
+            ('%.5f', 'grad_norm')
         ]
         super().__init__(csv_path, *self.fields)
         import wandb

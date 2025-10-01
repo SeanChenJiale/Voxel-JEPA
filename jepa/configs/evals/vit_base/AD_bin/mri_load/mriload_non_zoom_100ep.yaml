@@ -57,7 +57,7 @@ pretrain:
   write_tag: K400andmri_mriloader_100ep
 
 logging:
-  project: voxel-jepa-ad-bin-base # Don't change this
+  project: voxel-jepa-ad-bin-base-scratch # Don't change this
   run_name: K400andmri_mriloader_100ep # Please change every time before running, this is the name for wandb run file
 port: 42005
   ##todo run tomorrow 9th april.

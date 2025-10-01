@@ -84,6 +84,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     tight_SiLU = args_pretrain.get('tight_silu', True)
     uniform_power = args_pretrain.get('uniform_power', False)
     pretrained_path = os.path.join(pretrain_folder, ckp_fname)
+    strategy = args_pretrain.get('strategy','consecutive') # default mri selection is 'consecutive' other is 'skip_1'
     # Optional [for Video model]:
     tubelet_size = args_pretrain.get('tubelet_size', 2)
     pretrain_frames_per_clip = args_pretrain.get('frames_per_clip', 1)
@@ -172,7 +173,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
         os.makedirs(folder, exist_ok=True)
     log_file = os.path.join(folder, f'{tag}_r{rank}.csv')
     latest_path = os.path.join(folder, f'{tag}-latest.pth.tar')
-
+    best_path = os.path.join(folder, f'{tag}-best.pth.tar')
     # -- make csv_logger
     # if rank == 0:
     #     csv_logger = CSVLogger(log_file,
@@ -252,7 +253,8 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
         world_size=world_size,
         rank=rank,
         training=True,
-        data_aug_dict=data_aug_dict)
+        data_aug_dict=data_aug_dict,
+        strategy=strategy) #+
     val_loader = make_dataloader(
         dataset_type=dataset_type,
         root_path=val_data_path,
@@ -267,7 +269,8 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
         world_size=world_size,
         rank=rank,
         training=False,
-        data_aug_dict=data_aug_dict)
+        data_aug_dict=data_aug_dict,
+        strategy=strategy) #+
     ipe = len(train_loader)
     logger.info(f'Dataloader created... iterations per epoch: {ipe}')
 
@@ -309,8 +312,20 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
         }
         if rank == 0:
             torch.save(save_dict, latest_path)
-
+    def save_best_checkpoint(epoch):
+        save_dict = {
+            'classifier': classifier.state_dict(),
+            'opt': optimizer.state_dict(),
+            'scaler': None if scaler is None else scaler.state_dict(),
+            'epoch': epoch,
+            'batch_size': batch_size,
+            'world_size': world_size,
+            'lr': lr
+        }
+        if rank == 0:
+            torch.save(save_dict, best_path)
     # TRAIN LOOP
+    best_MAE = float('inf')
     for epoch in range(start_epoch, num_epochs):
         logger.info('Epoch %d' % (epoch + 1))
         train_acc,train_mae = run_one_epoch(
@@ -348,7 +363,10 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
         if rank == 0:
             csv_logger.log(epoch + 1, train_mae, val_mae)
         save_checkpoint(epoch + 1)
-    
+        if val_mae < best_MAE:
+            best_MAE = val_mae
+            save_best_checkpoint(epoch + 1)
+
     ### New part by Hasitha
     if rank == 0 and args_eval.get("plotter", "csv") == "wandb":
         import wandb
@@ -516,7 +534,8 @@ def make_dataloader(
     allow_segment_overlap=True,
     training=False,
     num_workers=12,
-    subset_file=None
+    subset_file=None,
+    strategy='consecutive' #+
 ):
     ar_range = data_aug_dict['ar_range']
     rr_scale = data_aug_dict['rr_scale']
@@ -550,7 +569,8 @@ def make_dataloader(
         num_workers=num_workers,
         copy_data=False,
         drop_last=False,
-        subset_file=subset_file)
+        subset_file=subset_file,
+        strategy=strategy,) #+
     return data_loader
 
 

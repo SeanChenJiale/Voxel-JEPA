@@ -1,0 +1,154 @@
+42006
+INFO:root:called-params /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/vit_base/AD_bin/grad_cam/mriload_non_zoom_withT2FLAIRpretraining_coronalonly_AD_145ep.yaml
+INFO:root:loaded params...
+{   'data': {   'dataset_train': '/media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000_csv/eval_AD/AD_gradcam/1sample.csv',
+                'dataset_type': 'mridataset',
+                'dataset_val': '/media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000_csv/eval_AD/AD_gradcam/1sample.csv',
+                'frame_step': 4,
+                'frames_per_clip': 16,
+                'num_classes': 2,
+                'num_segments': 1,
+                'num_views_per_segment': 1,
+                'num_workers': 16},
+    'data_aug': {   'auto_augment': False,
+                    'motion_shift': False,
+                    'normalize': [   [0.146689, 0.146689, 0.146689],
+                                     [0.267249, 0.267249, 0.267249]],
+                    'random_resize_aspect_ratio': [0.75, 1.35],
+                    'random_resize_scale': [0.3, 1.0],
+                    'reprob': 0.0},
+    'eval_name': 'video_classification_grad_cam',
+    'logging': {   'project': 'voxel-jepa-ad-bin-base',
+                   'run_name': 'vit_base_mriload_k40025_allmodality_coronalonly_AD_sample'},
+    'nodes': 1,
+    'optimization': {   'attend_across_segments': False,
+                        'batch_size': 1,
+                        'final_lr': 0.0,
+                        'lr': 0.0005,
+                        'num_epochs': 1,
+                        'resolution': 224,
+                        'start_lr': 0.0005,
+                        'use_bfloat16': True,
+                        'warmup': 0.0,
+                        'weight_decay': 0.005},
+    'port': 42006,
+    'pretrain': {   'checkpoint': 'vitbase_mri_ctn_45epoch_from_k400_AD_sample-latest.pth.tar',
+                    'checkpoint_key': 'target_encoder',
+                    'clip_duration': None,
+                    'folder': '/media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/',
+                    'frames_per_clip': 16,
+                    'model_name': 'vit_base',
+                    'patch_size': 16,
+                    'strategy': 'AD',
+                    'tight_silu': False,
+                    'tubelet_size': 2,
+                    'uniform_power': True,
+                    'use_sdpa': True,
+                    'use_silu': False,
+                    'write_tag': 'vit_base_mriload_k40045_allmodality_coronalonly_AD_sample'},
+    'resume_checkpoint': False,
+    'tag': 'vit_base_mriload_k40045_allmodality_coronalonly_AD_sample',
+    'tasks_per_node': 1}
+INFO:root:Running... (rank: 0/1)
+INFO:root:Running evaluation: video_classification_grad_cam
+INFO:root:Initialized (rank/world-size) 0/1
+
+
+
+LOADING FROM BEST PATH
+
+
+
+INFO:root:Loading pretrained model from /media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/vitbase_mri_ctn_45epoch_from_k400_AD_sample-latest.pth.tar
+VisionTransformer(
+  (patch_embed): PatchEmbed3D(
+    (proj): Conv3d(3, 768, kernel_size=(2, 16, 16), stride=(2, 16, 16))
+  )
+  (blocks): ModuleList(
+    (0-11): 12 x Block(
+      (norm1): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+      (attn): Attention(
+        (qkv): Linear(in_features=768, out_features=2304, bias=True)
+        (attn_drop): Dropout(p=0.0, inplace=False)
+        (proj): Linear(in_features=768, out_features=768, bias=True)
+        (proj_drop): Dropout(p=0.0, inplace=False)
+      )
+      (norm2): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+      (mlp): MLP(
+        (fc1): Linear(in_features=768, out_features=3072, bias=True)
+        (act): GELU(approximate='none')
+        (fc2): Linear(in_features=3072, out_features=768, bias=True)
+        (drop): Dropout(p=0.0, inplace=False)
+      )
+    )
+  )
+  (norm): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+)
+INFO:root:loaded pretrained model with msg: <All keys matched successfully>
+INFO:root:loaded pretrained encoder from epoch: 145
+ path: /media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/vitbase_mri_ctn_45epoch_from_k400_AD_sample-latest.pth.tar
+Type of encoder.model: <class 'src.models.vision_transformer_gradcam.VisionTransformer'>
+INFO:root:Loading checkpoint from: /media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/video_classification_frozen/vit_base_mriload_k40045_allmodality_coronalonly_AD_sample/vit_base_mriload_k40045_allmodality_coronalonly_AD_sample-best.pth.tar
+INFO:root:Successfully loaded weights from checkpoint: /media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/video_classification_frozen/vit_base_mriload_k40045_allmodality_coronalonly_AD_sample/vit_base_mriload_k40045_allmodality_coronalonly_AD_sample-best.pth.tar
+init_data: mridataset
+INFO:root:MRIDataset dataset created
+INFO:root:MRIDataset unsupervised data loader created
+INFO:root:Dataloader created... iterations per epoch: 1
+INFO:root:Using AdamW
+/media/backup_16TB/sean/VJEPA/jepa/evals/video_classification_grad_cam/eval.py:657: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler() if use_bfloat16 else None
+AttentiveClassifier(
+  (pooler): AttentivePooler(
+    (cross_attention_block): CrossAttentionBlock(
+      (norm1): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+      (xattn): CrossAttention(
+        (q): Linear(in_features=768, out_features=768, bias=True)
+        (kv): Linear(in_features=768, out_features=1536, bias=True)
+        (proj): Linear(in_features=768, out_features=768, bias=True)
+      )
+      (norm2): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+      (mlp): MLP(
+        (fc1): Linear(in_features=768, out_features=3072, bias=True)
+        (act): GELU(approximate='none')
+        (fc2): Linear(in_features=3072, out_features=768, bias=True)
+        (drop): Dropout(p=0.0, inplace=False)
+      )
+    )
+  )
+  (linear): Linear(in_features=768, out_features=2, bias=True)
+)
+/media/backup_16TB/sean/VJEPA/jepa/evals/video_classification_grad_cam/eval.py:487: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(dtype=torch.float16, enabled=use_bfloat16):
+/home/sean/anaconda3/envs/jepa/lib/python3.9/contextlib.py:87: FutureWarning: `torch.backends.cuda.sdp_kernel()` is deprecated. In the future, this context manager will be removed. Please see `torch.nn.attention.sdpa_kernel()` for the new context manager, with updated signature.
+  self.gen = func(*args, **kwds)
+6
+torch.Size([1, 3, 16, 224, 224])
+[GradCAM DEBUG] torch.is_grad_enabled() before forward: True
+[GradCAM] Forward hook called. Activation shape: torch.Size([1, 1568, 768])
+[GradCAM DEBUG] After forward: hook.activations is not None: True
+[GradCAM DEBUG] hook.activations.requires_grad: True
+INFO:root:[    0] 100.000% (loss: 0.029) [mem: 1.09e+03]
+[GradCAM] Backward hook called. Gradient shape: torch.Size([1, 1568, 768])
+[GradCAM DEBUG] Before saving: saved=False, hook is not None: True, hook.activations is not None: True, hook.gradients is not None: True
+[GradCAM] Saving Grad-CAM tensors for sample index 0 in batch 0
+[GradCAM] Saved Grad-CAM tensors to /media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/video_classification_frozen/vit_base_mriload_k40045_allmodality_coronalonly_AD_sample/vit_base_mriload_k40045_allmodality_coronalonly_AD_sample_gradcam/gradcam_sample_0_0.pt
+dict_keys(['input', 'activations', 'gradients', 'pred_class'])
+torch.Size([3, 16, 224, 224])
+activations shape: torch.Size([1568, 768])
+gradients shape: torch.Size([1568, 768])
+input shape: torch.Size([3, 16, 224, 224])
+
+
+ Saved gradcam output to /media/backup_16TB/sean/VJEPA/a6000_output/vit_base/K400/video_classification_frozen/vit_base_mriload_k40045_allmodality_coronalonly_AD_sample/vit_base_mriload_k40045_allmodality_coronalonly_AD_sample_gradcam/gradcam_sample_0_0.pt 
+
+
+dict_keys(['input', 'activations', 'gradients', 'pred_class'])
+torch.Size([3, 16, 224, 224])
+activations shape: torch.Size([1568, 768])
+gradients shape: torch.Size([1568, 768])
+min cam: -0.0009456 max cam: 0.0009403
+input shape: torch.Size([3, 16, 224, 224])
+
+Most important frame: 4 (score: 0.0212)
+Least important frame: 1 (score: 0.0034)
+INFO:root:test: 100.000%

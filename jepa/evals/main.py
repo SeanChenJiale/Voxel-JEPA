@@ -18,6 +18,9 @@ from evals.scaffold import main as eval_main
 import torch.distributed as dist
 import os
 
+import socket
+import sys
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--fname', type=str,
@@ -88,7 +91,11 @@ def process_main(rank, fname, world_size, devices, plotter, validation, debug, g
     # Launch the eval with loaded config
     eval_main(params['eval_name'], args_eval=params,plotter=plotter, validation=validation, debug=debug, grad_cam=grad_cam)
 
-
+def get_free_port():
+    """Finds a free port by letting the OS pick one."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))  # Bind to any free port
+        return s.getsockname()[1]  # Return the port number assigned
 
 if __name__ == '__main__':
     args = parser.parse_args()
@@ -97,11 +104,26 @@ if __name__ == '__main__':
     with open(args.fname, 'r') as y_file:
         params = yaml.load(y_file, Loader=yaml.FullLoader)
 
+    # If port is specified, try to use it; otherwise, pick a free port automatically
+    port = params.get('port', None)
+    if port is None:
+        port = get_free_port()
+        print(f"No port specified. Using automatically selected free port: {port}")
+    else:
+        # Check if specified port is free, else pick a free one
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(('localhost', port))
+            except OSError:
+                print(f"Port {port} is in use. Picking a free port automatically.")
+                port = get_free_port()
+    print(port)
     os.environ["MASTER_ADDR"] = "localhost"
-    os.environ["MASTER_PORT"] = str(params['port'])
+    os.environ["MASTER_PORT"] = str(port)
     mp.set_start_method('spawn')
-    for rank in range(num_gpus):
-        mp.Process(
-            target=process_main,
-            args=(rank, args.fname, num_gpus, args.devices, args.plotter, args.validation, args.debug, args.grad_cam)
-        ).start()
+    process_main(0, args.fname, num_gpus, args.devices, args.plotter, args.validation, args.debug, args.grad_cam) # For debugging with single process
+    # for rank in range(num_gpus):
+    #     mp.Process(
+    #         target=process_main,
+    #         args=(rank, args.fname, num_gpus, args.devices, args.plotter, args.validation, args.debug, args.grad_cam)
+    #     ).start()

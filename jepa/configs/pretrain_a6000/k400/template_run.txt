@@ -1,1 +1,1 @@
-python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/k400/vit_base/vitbase_k400_block_embed.yaml --devices cuda:1 cuda:2 
+python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/k400/32_frames/vitbase_k400.yaml --devices cuda:0 cuda:1 cuda:2 

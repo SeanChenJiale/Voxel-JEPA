@@ -6,4 +6,4 @@ csv file created at /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pr
 txt file created at pretrain_maskfix1.txt
 
 python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/vit_base/mri_load/AD_sample/pretrain_ctn_45_epochk400_T1T2FLAIR_AD_sample.yaml --devices cuda:1 cuda:2 --plotter csv | tee output.log
-python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/vit_base/mri_load/pretrain_ctn_25_epochk400_T1T2FLAIR_AD_sample.yaml --devices cuda:0 cuda:1 --debug True --plotter csv
+python -m app.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/vit_base/mri_load/pretrain_ctn_45ep_26_9.yaml --devices cuda:0 cuda:1 cuda:2 --debug True --plotter csv
