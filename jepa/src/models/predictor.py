@@ -231,12 +231,21 @@ class VisionTransformerPredictor(nn.Module):
         for blk in self.predictor_blocks:
             x = blk(x, mask=masks)
         x = self.predictor_norm(x)
-
         # Return output corresponding to target tokens
-        x = x[:, N_ctxt:]
-        x = self.predictor_proj(x)
+        x_hat = self.predictor_proj(x)
+        x = x_hat[:, N_ctxt:]
+        # Rearrange x_hat back to its original order using masks_ctxt and masks_tgt
+        original_order = torch.zeros_like(x_hat)  # Placeholder for rearranged x_hat
 
-        return x
+        # Fill in the context tokens
+        for i, mask in enumerate(masks_ctxt):
+            original_order[:, mask] = x_hat[:, :N_ctxt]
+
+        # Fill in the target tokens
+        for i, mask in enumerate(masks_tgt):
+            original_order[:, mask] = x_hat[:, N_ctxt:]
+
+        return x , original_order
 
 
 def vit_predictor(**kwargs):

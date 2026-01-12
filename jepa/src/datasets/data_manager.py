@@ -37,9 +37,9 @@ def init_data(
     ipe=300,
     log_dir=None,
     debug=False,
-    strategy='consecutive'
+strategy='consecutive',
 ):
-    print(f'init_data: {data}')
+
     if (data.lower() == 'imagenet') \
             or (data.lower() == 'inat21') \
             or (data.lower() == 'places205'):
@@ -82,8 +82,8 @@ def init_data(
             rank=rank,
             drop_last=drop_last,
             log_dir=log_dir,
-            debug=debug)
-            
+            debug=debug,)
+
     elif data.lower() == 'mridataset':
         from src.datasets.mri_dataset_7_8 import make_mridataset
         dataset, data_loader, dist_sampler = make_mridataset(
@@ -107,6 +107,55 @@ def init_data(
             world_size=world_size,
             log_dir=log_dir,
             debug=debug,
-            strategy=strategy
-            )  
+        strategy=strategy)
+
+    elif data.lower() == 'mri_segdataset':
+        from src.datasets.mri_seg_dataset import make_mridataset
+        dataset, data_loader, dist_sampler = make_mridataset(
+            data_paths=root_path,
+            batch_size=batch_size,
+            frames_per_volume=clip_len,
+            frame_step=frame_sample_rate,
+            duration=duration,
+            num_clips=num_clips,
+            random_clip_sampling=random_clip_sampling,
+            allow_clip_overlap=allow_clip_overlap,
+            filter_short_volumes=filter_short_videos,
+            filter_long_volumes=filter_long_videos,
+            shared_transform=shared_transform,
+            transform=transform,
+            datasets_weights=datasets_weights,
+            collator=collator,
+            drop_last=drop_last,
+            num_workers=num_workers,
+            rank=rank,
+            world_size=world_size,
+            log_dir=log_dir,
+            debug=debug,
+        strategy=strategy)
+
+    elif data.lower() == 'mridataset_v2':
+        from src.datasets.mri_dataset_v2 import make_mridataset
+        dataset, data_loader, dist_sampler = make_mridataset(
+            data_paths=root_path,
+            batch_size=batch_size,
+            frames_per_volume=clip_len,
+            frame_step=frame_sample_rate,
+            duration=duration,
+            num_clips=num_clips,
+            random_clip_sampling=random_clip_sampling,
+            allow_clip_overlap=allow_clip_overlap,
+            filter_short_volumes=filter_short_videos,
+            filter_long_volumes=filter_long_videos,
+            shared_transform=shared_transform,
+            transform=transform,
+            datasets_weights=datasets_weights,
+            collator=collator,
+            drop_last=drop_last,
+            num_workers=num_workers,
+            rank=rank,
+            world_size=world_size,
+            log_dir=log_dir,
+            debug=debug,
+        strategy=strategy)
     return (data_loader, dist_sampler)
