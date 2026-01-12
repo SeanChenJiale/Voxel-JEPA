@@ -43,9 +43,9 @@ data_aug:
     - 0.267249
 logging:
   folder:  /media/backup_16TB/sean/VJEPA_results/base
-  write_tag: decode_splice_no_ent_9_1_trial4
+  write_tag: decode_splice_no_ent_9_1_trial5
   project: voxel-jepa-base-decoder-only # Don't change this
-  run_name: decode_splice_no_ent_9_1_trial4 #vitbase_mri_ctn_50epoch_from_k400_24_8_wgram2 # Please change every time before running
+  run_name: decode_splice_no_ent_9_1_trial5 #vitbase_mri_ctn_50epoch_from_k400_24_8_wgram2 # Please change every time before running
 
 #NEW: Decoder configuration
 decoder:

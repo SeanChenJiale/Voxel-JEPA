@@ -110,10 +110,12 @@ class WandBCSVLogger(CSVLogger):                  # Logs training stats to CSV a
             ('%.5f', 'loss'),
             ('%.5f', 'loss-jepa'),
             ('%.5f', 'reg-loss'),
+            ('%.5f', 'loss-pixel'),  # Add loss_pixel here
             ('%.5f', 'enc-grad-norm'),
             ('%.5f', 'pred-grad-norm'),
+            ('%.5f', 'cov-loss'),
             ('%d', 'gpu-time(ms)'),
-            ('%d', 'wall-time(ms)')
+            ('%d', 'wall-time(ms)'),
         ]
         super().__init__(csv_path, *self.fields)
         import wandb
@@ -129,10 +131,8 @@ class WandBCSVLoggerEval(CSVLogger):              # Eval logger variant for wand
         self.csv_path = csv_path
         self.fields = [
             ('%d', 'epoch'),
-            ('%.5f', 'train_acc'),
-            ('%.5f', 'val_acc'),
             ('%.5f', 'loss'),
-            ('%.5f', 'grad_norm')
+            ('%.5f', 'acc')
         ]
         super().__init__(csv_path, *self.fields)
         import wandb
