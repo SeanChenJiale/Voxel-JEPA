@@ -30,6 +30,13 @@ def main(
             resume_preempt=resume_preempt,
             plotter=plotter,
             debug=debug)
+    elif debug:
+        logger.info(f'Running evaluation: {eval_name}')
+        return importlib.import_module(f'evals.{eval_name}.eval_debug').main(
+            args_eval=args_eval,
+            resume_preempt=resume_preempt,
+            plotter=plotter,
+            debug=debug)
     else:
 
         logger.info(f'Running evaluation: {eval_name}')

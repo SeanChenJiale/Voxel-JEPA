@@ -301,6 +301,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
 
     # -- load training checkpoint
     start_epoch = 0
+
     if resume_checkpoint:
         classifier, optimizer, scaler, start_epoch = load_checkpoint(
             device=device,
@@ -453,13 +454,19 @@ def run_one_epoch(
                     logger.info(f"plotted histograms as subplots")
                 except Exception as e:
                     logger.info(f"Could not plot channel histogram: {e}")
-            clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
+            # import pdb; pdb.set_trace()
+            # clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
             labels = data[1].to(device)
             batch_size = len(labels)
 
             # Forward and prediction
             with torch.no_grad():
-                outputs = encoder(clips, clip_indices)
+                if attend_across_segments:
+
+                    outputs = encoder(clips, clip_indices) # only important if attend across_segment
+                
+                else:
+                    outputs = encoder(clips)
                 if not training:
                     if attend_across_segments:
                         outputs = [classifier(o) for o in outputs]

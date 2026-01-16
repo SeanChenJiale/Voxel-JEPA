@@ -1,5 +1,6 @@
 import torch
 import ants
+import torch.nn as nn
 def reshape_tensor_from_recon(video_data):
     recon = video_data.permute(1, 0, 2, 3)  # (channels, temporal, height, width) -> (temporal, channels, height, width)
     recon = recon.reshape(-1,224,224)
@@ -38,7 +39,7 @@ def extract_subcortical_entropy_torch(atlas, orig_torch, slice_list):
     def calculate_mean_torch(values):
         if values.numel() == 0:  # Check if the tensor is empty
             return torch.tensor(0.0, device=values.device)
-        return torch.mean(values)
+        return torch.mean(values[values != 0])
 
     def calculate_entropy_torch(values):
         if values.numel() == 0:  # Check if the tensor is empty
@@ -63,10 +64,16 @@ def extract_subcortical_entropy_torch(atlas, orig_torch, slice_list):
         return entropy
     for roi_id, name in subcortical_labels:
         # Extract the values corresponding to the current region
-        region_values = orig_torch * (atlas == roi_id).float()
+        mask = (atlas == roi_id)
 
+        if mask.sum() == 0:
+            mean_val = torch.tensor(0.0, device=atlas.device)
         # Calculate entropy for the region
-        mean = calculate_mean_torch(region_values)
+    
+        else:
+            roi_pixels = orig_torch[mask]
+
+            mean = calculate_mean_torch(roi_pixels)
 
         # Store the entropy value in the dictionary
         entropy_data[f"{name}"] = mean

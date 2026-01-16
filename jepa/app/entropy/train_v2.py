@@ -26,6 +26,7 @@ import numpy as np
 import torch
 import torch.multiprocessing as mp
 import torch.nn.functional as F
+import torch.nn as nn
 from torch.nn.parallel import DistributedDataParallel
 
 from src.datasets.data_manager import init_data
@@ -51,6 +52,7 @@ from app.entropy.utils import (
 )
 from app.entropy.transforms import make_transforms
 from src.utils.entropy_loss import calculate_trace_torch
+
 
 # --
 log_timings = True
@@ -749,13 +751,11 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                         reconstructed_vid = decoder(full_features_pred) # take from previous computation graph.
                         spliced_video = splice(clips, reconstructed_vid, masks_enc, patch_size, tubelet_size)
 
-                        
-
                         with torch.no_grad():
                             orig_loss= calculate_trace_torch(clips, slice_index_list, axis_index_list, device=clips.device, atlas_list=atlas_list)
                         
                         recon_loss= calculate_trace_torch(spliced_video, slice_index_list, axis_index_list, device=reconstructed_vid.device, atlas_list=atlas_list)
-                        cov_loss = torch.abs(orig_loss-recon_loss) * cov_loss_weight
+                        cov_loss = nn.L1Loss()(orig_loss, recon_loss) * cov_loss_weight
                         
                         jepa_loss = loss_jepa + reg_coeff * loss_reg + cov_loss
 

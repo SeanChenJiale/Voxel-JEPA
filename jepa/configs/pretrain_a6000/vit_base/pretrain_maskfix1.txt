@@ -5,4 +5,4 @@ include_list: ['OASIS_3', 'NACC_T1_Volume_mri', 'ADNI_MP_RAGE', 'MCSA', 'WU1200'
 csv file created at /media/backup_16TB/sean/VJEPA/jepa/configs/pretrain_a6000/pretrain_maskfix1/pretrain_maskfix1.csv
 txt file created at pretrain_maskfix1.txt
 
-python -m app.main --fname /media/backup_16TB/sean/VoxelJEPA/jepa/configs/pretrain_a6000/vit_base/entropy_loss/12_1_2026/decoder_mean_0_1.yaml --devices cuda:0 cuda:1 cuda:2
+python -m app.main --fname /media/backup_16TB/sean/VoxelJEPA/jepa/configs/pretrain_a6000/vit_base/entropy_loss/12_1_2026/decoder_mean_0_1_mean.yaml --devices cuda:0 cuda:1 cuda:2

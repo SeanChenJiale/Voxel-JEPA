@@ -129,6 +129,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     pretrain_folder = args_pretrain.get('folder', None)
     ckp_fname = args_pretrain.get('checkpoint', None)
     tag = args_pretrain.get('write_tag', None)
+    eval_suffix = args_eval.get('eval_suffix', '')
     use_sdpa = args_pretrain.get('use_sdpa', True)
     use_SiLU = args_pretrain.get('use_silu', False)
     tight_SiLU = args_pretrain.get('tight_silu', True)
@@ -188,6 +189,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     # -- EXPERIMENT-ID/TAG (optional)
     resume_checkpoint = args_eval.get('resume_checkpoint', False) or resume_preempt
     eval_tag = args_eval.get('tag', None)
+    use_latest = args_eval.get('use_latest', False)
 
     # ----------------------------------------------------------------------- #
 
@@ -213,7 +215,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
         os.makedirs(folder, exist_ok=True)
     log_file = os.path.join(folder, f'{tag}_r{rank}.csv')
     latest_path = os.path.join(folder, f'{tag}-best.pth.tar')
-    if not os.path.exists(latest_path):
+    if use_latest:
         print("\n\n\nLOADING FROM LATEST PATH\n\n\n")
         latest_path = os.path.join(folder, f'{tag}-latest.pth.tar')
     else:
@@ -285,10 +287,10 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
 
 
     # TRAIN LOOP
-    writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}eval_results.csv'))
+    writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}_{eval_suffix}_results.csv'))
     if dataset_type == 'VideoDataset':
         writer.writerow(["Label", "Prediction", "Fname", "Probabilities"])
-    elif dataset_type.lower() == 'mridataset':
+    elif dataset_type.lower() == 'mridataset' or dataset_type.lower() == 'mridataset_v2':
         writer.writerow(["Label", "Prediction", "Fname", "Axis", "Probabilities"])
     for epoch in range(1):
         val_acc = run_one_epoch(
@@ -311,8 +313,8 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
 
         logger.info('[%5d] test: %.3f%%' % (epoch + 1, val_acc))
     
-    print(f"Validation results saved to {os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}eval_results.csv')}")
-    plot_confusion_matrix(os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}eval_results.csv'),is_multiclass)
+    print(f"Validation results saved to {os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}_{eval_suffix}_results.csv')}")
+    plot_confusion_matrix(os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}_{eval_suffix}_results.csv'),is_multiclass)
 
     #######################
 
@@ -360,7 +362,10 @@ def run_one_epoch(
                 [dij.to(device, non_blocking=True) for dij in di]  # iterate over spatial views of clip
                 for di in data[0]  # iterate over temporal index of clip
             ]
-            clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
+            if attend_across_segments:
+                clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
+            else:
+                clip_indices = None
             labels = data[1].to(device)
             batch_size = len(labels)
 
@@ -392,7 +397,7 @@ def run_one_epoch(
         all_labels.extend(labels.cpu().numpy().flatten())
         all_predictions.extend(predictions.cpu().numpy())
         all_clip_names.extend(data[3])
-        if dataset_type.lower() == 'mridataset':
+        if dataset_type.lower() == 'mridataset' or dataset_type.lower() == 'mridataset_v2':
             all_axis.extend(data[5].cpu().tolist())
 
         # Compute loss
@@ -428,7 +433,7 @@ def run_one_epoch(
         logger.info('[%5d] %.3f%% (loss: %.3f) [mem: %.2e]'
                     % (itr, top1_meter.avg, loss,
                         torch.cuda.max_memory_allocated() / 1024.**2))
-    if dataset_type.lower() == 'mridataset':
+    if dataset_type.lower() == 'mridataset' or dataset_type.lower() == 'mridataset_v2':
         writer.writerows(zip(all_labels, all_predictions,all_clip_names, all_axis, all_probabilities))  # Write rows
     else:
         writer.writerows(zip(all_labels, all_predictions,all_clip_names, all_probabilities))  # Write rows  # Write rows)

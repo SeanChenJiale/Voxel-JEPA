@@ -25,6 +25,7 @@ from torch.nn.parallel import DistributedDataParallel
 from src.datasets.data_manager import init_data
 from src.masks.random_tube import MaskCollator as TubeMaskCollator
 from src.masks.multiblock3d import MaskCollator as MB3DMaskCollator
+from src.masks.half_mask import MaskCollator as HalfMaskCollator
 from src.masks.utils import apply_masks
 from src.utils.distributed import init_distributed, AllReduce
 from src.utils.logging import (
@@ -259,6 +260,15 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
     if mask_type == 'multiblock3d':
         logger.info('Initializing basic multi-block mask')
         mask_collator = MB3DMaskCollator(
+            crop_size=crop_size,
+            num_frames=num_frames,
+            patch_size=patch_size,
+            tubelet_size=tubelet_size,
+            cfgs_mask=cfgs_mask,
+            debug=debug)
+    elif mask_type == 'half':
+        logger.info('Initializing half mask')
+        mask_collator = HalfMaskCollator(
             crop_size=crop_size,
             num_frames=num_frames,
             patch_size=patch_size,
@@ -612,6 +622,7 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                 with torch.cuda.amp.autocast(dtype=dtype, enabled=mixed_precision):
                     h = forward_target(clips)
                     z = forward_context(clips, h)
+                    z = [pred[0] for pred in z]
                     loss_jepa = loss_fn(z, h)  # jepa prediction loss
                     pstd_z = reg_fn(z)  # predictor variance across patches
                     loss_reg += torch.mean(F.relu(1.-pstd_z))

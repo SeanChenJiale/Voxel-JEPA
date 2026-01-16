@@ -120,6 +120,9 @@ if __name__ == '__main__':
     print(port)
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = str(port)
+    if args.debug:
+        process_main(rank=0, fname=args.fname, world_size=1, devices=["cuda:1"], plotter=args.plotter, validation = args.validation, debug=args.debug, grad_cam=args.grad_cam)
+    #process_main args rank, fname, world_size, devices, plotter, validation, debug, grad_cam
     mp.set_start_method('spawn')
     process_main(0, args.fname, num_gpus, args.devices, args.plotter, args.validation, args.debug, args.grad_cam) # For debugging with single process
     # for rank in range(num_gpus):
