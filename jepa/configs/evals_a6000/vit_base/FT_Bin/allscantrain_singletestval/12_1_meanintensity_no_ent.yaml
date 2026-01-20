@@ -1,18 +1,18 @@
 nodes: 1
 tasks_per_node: 1
-tag: FTD_allscanstrain_no_meanintensity
+tag: FTD_bin
 eval_suffix: val_latest
 use_latest: true
 eval_name: video_classification_frozen
 resume_checkpoint: false
 data:
-  dataset_train: /media/backup_16TB/sean/Monai/Metadata/NIFD/NIFD_allscantrain_singlevaltest__train.csv
-  dataset_val: /media/backup_16TB/sean/Monai/Metadata/NIFD/NIFD_allscantrain_singlevaltest__val.csv
+  dataset_train: /media/backup_16TB/sean/Monai/Metadata/NIFD/NIFD_allscans_train.csv
+  dataset_val: /media/backup_16TB/sean/Monai/Metadata/NIFD/NIFD_allscans_val.csv
   dataset_type: mridataset_v2
   num_classes: 2
   frames_per_clip: 16
   num_segments: 1
-  num_workers: 16
+  num_workers: 4
   num_views_per_segment: 1
   frame_step: 4
 
@@ -60,7 +60,7 @@ pretrain:
   write_tag: FTD_allscanstrain_no_meanintensity
   strategy: AD
 logging:
-  project: voxel-jepa-ad-bin-base-final # Don't change this
+  project: voxel-jepa-ftd-bin-base-final # Don't change this
   run_name: FTD_allscanstrain_no_meanintensity  # Please change every time before running, this is the name for wandb run file
 port: 42005
 app: gram_anchoring

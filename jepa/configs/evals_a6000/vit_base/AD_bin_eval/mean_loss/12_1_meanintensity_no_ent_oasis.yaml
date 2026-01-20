@@ -1,17 +1,18 @@
 nodes: 1
 tasks_per_node: 1
 tag: AD_alltrainscans_nomeaninten
-eval_suffix: test_ood
+eval_suffix: test_ood_last
+use_latest: true
 eval_name: video_classification_frozen
 resume_checkpoint: false
 data:
   dataset_train: /media/backup_16TB/sean/Monai/Metadata/6_1_2026/train_allscans_valtest_baseline__AD_CN_train_split.csv
-  dataset_val: /media/backup_16TB/sean/VoxelJEPA/jepa/configs/evals_a6000_csv/AD_CN/OASIS3_files_with_diag_unique_subject.csv
+  dataset_val: /media/backup_16TB/sean/finetuning/OASIS3_files_all.csv
   dataset_type: mridataset
   num_classes: 2
   frames_per_clip: 16
   num_segments: 1
-  num_workers: 16
+  num_workers: 4
   num_views_per_segment: 1
   frame_step: 4
 

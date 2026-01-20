@@ -1,18 +1,18 @@
 nodes: 1
 tasks_per_node: 1
 tag: MCICN_alltrainscans_meanintensity
-eval_suffix: test_latest
+eval_suffix: test_last
 use_latest: true
 eval_name: video_classification_frozen
 resume_checkpoint: false
 data:
   dataset_train: /media/backup_16TB/sean/Monai/Metadata/6_1_2026/train_allscans_valtest_baseline_MCI_CNtrain_split.csv
-  dataset_val: /media/backup_16TB/sean/Monai/Metadata/6_1_2026/train_allscans_valtest_baseline_MCI_CNtest_split.csv
+  dataset_val: /media/backup_16TB/sean/Monai/Metadata/6_1_2026/A_MCI_CN_allscantest_split.csv
   dataset_type: mridataset_v2
   num_classes: 2
   frames_per_clip: 16
   num_segments: 1
-  num_workers: 16
+  num_workers: 4
   num_views_per_segment: 1
   frame_step: 4
 
