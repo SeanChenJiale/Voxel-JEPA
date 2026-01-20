@@ -1,18 +1,18 @@
 nodes: 1
 tasks_per_node: 1
 tag: ADMCINC_alltrainscans_no_meanintensity
-eval_suffix: test_id_latest
+eval_suffix: test_last
 use_latest: true
 eval_name: video_classification_frozen
 resume_checkpoint: false
 data:
   dataset_train: /media/backup_16TB/sean/Monai/Metadata/6_1_2026/train_allscans_valtest_baseline_AD_CN_MCItrain_split.csv
-  dataset_val: /media/backup_16TB/sean/Monai/Metadata/6_1_2026/train_allscans_valtest_baseline_AD_CN_MCItest_split.csv
+  dataset_val: /media/backup_16TB/sean/Monai/Metadata/6_1_2026/AD_MCI_CN_allscantest_split.csv
   dataset_type: mridataset_v2
   num_classes: 3
   frames_per_clip: 16
   num_segments: 1
-  num_workers: 16
+  num_workers: 4
   num_views_per_segment: 1
   frame_step: 4
 
@@ -67,6 +67,6 @@ app: gram_anchoring
   ##todo run tomorrow 9th april.
   #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/pretrain_maskfix_tiny/tiny_AD_binclass_slice48_mp4/vitl16_brainslice48_ADbinclassifier_lr_half_fix10.yaml --devices cuda:0>/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny/video_classification_frozen/vit_tiny_brainslice48_ADbinclass/lr_half_fix10.log 2>&1
   #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/vit_base/22_9/AD_bin/entropy_loss/AD_FTPT_halfmask_no_entropy.yaml --devices cuda:2 --validation True --plotter csv
-  #python -m evals.main --fname /media/backup_16TB/sean/VoxelJEPA/jepa/configs/evals_a6000/vit_base/ADCNMCI/12_1_meanintensity.yaml --devices cuda:2 --validation True --plotter csv
+  #python -m evals.main --fname /media/backup_16TB/sean/VoxelJEPA/jepa/configs/evals_a6000/vit_base/ADCNMCI_eval/12_1_no_meanintensity.yaml --devices cuda:2 --validation True --plotter csv
 
   

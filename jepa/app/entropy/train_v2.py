@@ -129,7 +129,11 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
     atlas_axis_0_path = cfgs_data.get('atlas')[0]
     atlas_axis_1_path = cfgs_data.get('atlas')[1]
     atlas_axis_2_path = cfgs_data.get('atlas')[2]
-    cov_loss_weight = cfgs_data.get('cov_loss_weight', 0.1)
+    use_cov_loss = cfgs_data.get('cov_loss', None)
+    use_std = cfgs_data.get('use_std', None)
+    use_mean = cfgs_data.get('use_mean', None)
+    mean_loss_weight = cfgs_data.get('mean_loss_weight', 0.1)
+    std_loss_weight = cfgs_data.get('std_loss_weight', 0.05)
     dataset_type = cfgs_data.get('dataset_type', 'videodataset')
     mask_type = cfgs_data.get('mask_type', 'multiblock3d')
     dataset_paths = cfgs_data.get('datasets', [])
@@ -748,17 +752,29 @@ def main(args, resume_preempt=False,debug=False,save_mask=False):
                         loss_jepa = loss_fn(z, h)  # jepa prediction loss
                         pstd_z = reg_fn(z)  # predictor variance across patches
                         loss_reg += torch.mean(F.relu(1.-pstd_z))
-                        reconstructed_vid = decoder(full_features_pred) # take from previous computation graph.
-                        spliced_video = splice(clips, reconstructed_vid, masks_enc, patch_size, tubelet_size)
+                        if use_cov_loss:
+                            mean_cov_loss = 0.0
+                            std_cov_loss = 0.0
+                            reconstructed_vid = decoder(full_features_pred) # take from previous computation graph.
+                            spliced_video = splice(clips, reconstructed_vid, masks_enc, patch_size, tubelet_size)
 
-                        with torch.no_grad():
-                            orig_loss= calculate_trace_torch(clips, slice_index_list, axis_index_list, device=clips.device, atlas_list=atlas_list)
-                        
-                        recon_loss= calculate_trace_torch(spliced_video, slice_index_list, axis_index_list, device=reconstructed_vid.device, atlas_list=atlas_list)
-                        cov_loss = nn.L1Loss()(orig_loss, recon_loss) * cov_loss_weight
-                        
-                        jepa_loss = loss_jepa + reg_coeff * loss_reg + cov_loss
+                            if use_std:
+                                with torch.no_grad():
+                                    orig_loss= calculate_trace_torch(clips, slice_index_list, axis_index_list, device=clips.device, atlas_list=atlas_list,trace_type='std')
 
+                                recon_loss= calculate_trace_torch(spliced_video, slice_index_list, axis_index_list, device=reconstructed_vid.device, atlas_list=atlas_list,trace_type='std')
+                                std_cov_loss = nn.L1Loss()(orig_loss, recon_loss) * std_loss_weight
+                            if use_mean:
+                                with torch.no_grad():
+                                    orig_loss= calculate_trace_torch(clips, slice_index_list, axis_index_list, device=clips.device, atlas_list=atlas_list,trace_type='mean')
+
+                                recon_loss= calculate_trace_torch(spliced_video, slice_index_list, axis_index_list, device=reconstructed_vid.device, atlas_list=atlas_list,trace_type='mean')
+                                mean_cov_loss = nn.L1Loss()(orig_loss, recon_loss) * mean_loss_weight
+
+                            cov_loss = mean_cov_loss + std_cov_loss
+                            jepa_loss = loss_jepa + reg_coeff * loss_reg + cov_loss
+                        else:
+                            jepa_loss = loss_jepa + reg_coeff * loss_reg
 
                     if (itr == 0 and rank == 0):
                         visualize_reconstruction_video(

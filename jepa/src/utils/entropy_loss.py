@@ -9,7 +9,7 @@ def reshape_tensor_from_recon(video_data):
     # recon_ants = ants.from_numpy(recon)
     return recon
 
-def extract_subcortical_entropy_torch(atlas, orig_torch, slice_list):
+def extract_subcortical_entropy_torch(atlas, orig_torch, slice_list, trace_type):
     atlas = atlas[slice_list]
     subcortical_labels = [
         (1, "Cerebral_White_Matter_Left"),
@@ -40,6 +40,12 @@ def extract_subcortical_entropy_torch(atlas, orig_torch, slice_list):
         if values.numel() == 0:  # Check if the tensor is empty
             return torch.tensor(0.0, device=values.device)
         return torch.mean(values[values != 0])
+
+    def calculate_standard_div(values):
+        if values.numel() == 0:  # Check if the tensor is empty
+            return torch.tensor(0.0, device=values.device)
+        epsilon = 1e-6  # Small constant to stabilize
+        return torch.sqrt(torch.var(values[values != 0]) + epsilon)
 
     def calculate_entropy_torch(values):
         if values.numel() == 0:  # Check if the tensor is empty
@@ -72,11 +78,13 @@ def extract_subcortical_entropy_torch(atlas, orig_torch, slice_list):
     
         else:
             roi_pixels = orig_torch[mask]
-
-            mean = calculate_mean_torch(roi_pixels)
+            if trace_type == 'mean':
+                statistic = calculate_mean_torch(roi_pixels)
+            elif trace_type == 'std':
+                statistic = calculate_standard_div(roi_pixels)
 
         # Store the entropy value in the dictionary
-        entropy_data[f"{name}"] = mean
+        entropy_data[f"{name}"] = statistic
 
 # each sample has 20 roi entropy values
 # we have 24 samples in the batch
@@ -86,7 +94,7 @@ def extract_subcortical_entropy_torch(atlas, orig_torch, slice_list):
     return entropy_data
 
 
-def calculate_trace_torch(batch_reconstructed_video, batch_indices_list, batch_axis_list, device = None, atlas_list=None):
+def calculate_trace_torch(batch_reconstructed_video, batch_indices_list, batch_axis_list, device = None, atlas_list=None, trace_type='mean'):
     if device is None:
         device = torch.device('cuda')  # Default to GPU 0 if no device is specified
     
@@ -121,11 +129,11 @@ def calculate_trace_torch(batch_reconstructed_video, batch_indices_list, batch_a
         extract_tensor = reshape_tensor_from_recon(clip)
 
         if axis == 0:
-            entropy_data = extract_subcortical_entropy_torch(atlas_list[0], extract_tensor, slice_indices)
+            entropy_data = extract_subcortical_entropy_torch(atlas_list[0], extract_tensor, slice_indices,trace_type=trace_type)
         elif axis == 1:
-            entropy_data = extract_subcortical_entropy_torch(atlas_list[1], extract_tensor, slice_indices)
+            entropy_data = extract_subcortical_entropy_torch(atlas_list[1], extract_tensor, slice_indices,trace_type=trace_type)
         else:
-            entropy_data = extract_subcortical_entropy_torch(atlas_list[2], extract_tensor, slice_indices)
+            entropy_data = extract_subcortical_entropy_torch(atlas_list[2], extract_tensor, slice_indices,trace_type=trace_type)
         # Collect entropy values for the current subject
         subject_entropy = [entropy_data[name] for _, name in subcortical_labels]
         entropy_list.append(torch.stack(subject_entropy))  # Stack into a tensor
@@ -144,7 +152,8 @@ def calculate_trace_torch(batch_reconstructed_video, batch_indices_list, batch_a
     right_regions = [i for i, (_, name) in enumerate(subcortical_labels) if "Right" in name]
     top_right_square = corr_matrix[left_regions, :][:, right_regions]
 
-    # Compute the trace of the top-right square
+    # trace = torch.diag(top_right_square) / num_regions
+    # Compute the trace of the top-right square working 19/1/2026
     trace = torch.trace(top_right_square) 
     trace = torch.clamp(trace, min=0.0, max=num_regions)
     trace = trace / num_regions

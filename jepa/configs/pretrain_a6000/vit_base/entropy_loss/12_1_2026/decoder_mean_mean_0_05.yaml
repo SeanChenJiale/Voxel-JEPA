@@ -1,0 +1,113 @@
+app: entropy
+data:
+  cov_loss: true
+  use_mean: true
+  use_std: false
+  cov_loss_weight: 0.05
+  decoder_only_epochs: 5
+  batch_size: 24 #
+  clip_duration: null
+  crop_size: 224
+  dataset_type: mridataset_v2
+  atlas:
+  - /media/backup_16TB/sean/volume-cropper/Atlas/HarvardOxford-sub-maxprob-thr25-1mm_axis0.nii.gz
+  - /media/backup_16TB/sean/volume-cropper/Atlas/HarvardOxford-sub-maxprob-thr25-1mm_axis1.nii.gz
+  - /media/backup_16TB/sean/volume-cropper/Atlas/HarvardOxford-sub-maxprob-thr25-1mm_axis2.nii.gz
+  datasets:
+  - /media/backup_16TB/sean/volume-cropper/data/output_4/box_indices_filtered_no_adni_final_AD_strat.csv #data/pretrain_a6000_csv/pretraining_nii_filtered_no_header.csv
+  decode_one_clip: true
+  filter_short_videos: false
+  num_clips: 1
+  num_frames: 16
+  num_workers: 0
+  patch_size: 16
+  pin_mem: true
+  sampling_rate: 4
+  tubelet_size: 2
+  strategy: AD #consecutive
+  mask_type: half
+data_aug:
+  auto_augment: false
+  motion_shift: false
+  random_resize_aspect_ratio:
+  - 1
+  - 1
+  random_resize_scale:
+  - 0.7
+  - 1.0
+  reprob: 0.0
+  normalize:
+  - - 0.146689
+    - 0.146689
+    - 0.146689
+  - - 0.267249
+    - 0.267249
+    - 0.267249
+logging:
+  folder:  /media/backup_16TB/sean/VJEPA_results/base
+  write_tag: decode_splice_no_ent_9_1_mean_0_05
+  project: voxel-jepa-base-decoder-only # Don't change this
+  run_name: decode_splice_no_ent_9_1_mean_0_05 #vitbase_mri_ctn_50epoch_from_k400_24_8_wgram2 # Please change every time before running
+
+#NEW: Decoder configuration
+decoder:
+  enabled: true
+  decoder_type: "videodecoder"  # Options: "linear" or "transformer" or "videodecoder"
+  decoder_depth: 6 #2
+  decoder_heads: 8
+  decoder_dim: 512
+  loss_type: "mse"
+  lr: 0.0001 #0.000625  # NEW: Decoder-specific learning rate (10x lower than JEPA)
+  weight_decay: 0.05 #0.04  # NEW: Decoder-specific weight decay
+  warmup: 5 #40  # NEW: Decoder-specific warmup
+
+loss:
+  loss_exp: 1.0
+  reg_coeff: 0.0
+  pixel_loss_weight: 1.0  # NEW: Weight for pixel reconstruction loss
+  perceptual_loss_weight: 0 #0.1
+mask:
+- aspect_ratio:
+  - 1
+  - 1
+  max_keep: null
+  max_temporal_keep: 1.0
+  num_blocks: 4
+  spatial_scale:
+  - 0.20
+  - 0.20
+  temporal_scale:
+  - 1.0
+  - 1.0
+
+
+meta:
+  dtype: bfloat16
+  eval_freq: 5
+  load_checkpoint: true
+  read_checkpoint: /media/backup_16TB/sean/VJEPA_results/base/K400_base_100epoch_fulltrain-latest.pth.tar  #checkpoints/pretrain/vitbase_mri_ctn_50epoch_from_k400_24_8-latest.pth.tar
+  seed: 234
+  use_sdpa: true
+model:
+  model_name: vit_base
+  pred_depth: 12
+  pred_embed_dim: 384
+  uniform_power: true
+  use_mask_tokens: true
+  zero_init_mask_tokens: true
+nodes: 1
+optimization:
+  clip_grad: 10.0
+  ema:
+  - 0.998
+  - 1.0
+  epochs: 55 #300   #video: 100, mri: 50
+  final_lr: 1.0e-06
+  final_weight_decay: 0.4
+  ipe_scale: 1.25
+  lr: 0.000625
+  start_lr: 0.000625
+  warmup: 0
+  weight_decay: 0.04
+tasks_per_node: 1
+port: 42011

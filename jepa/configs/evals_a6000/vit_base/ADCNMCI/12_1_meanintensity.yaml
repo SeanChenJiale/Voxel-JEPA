@@ -1,13 +1,13 @@
 nodes: 1
 tasks_per_node: 1
 tag: ADMCINC_alltrainscans_meanintensity
-eval_suffix: val_latest
+eval_suffix: val_last
 use_latest: true
 eval_name: video_classification_frozen
 resume_checkpoint: false
 data:
   dataset_train: /media/backup_16TB/sean/Monai/Metadata/6_1_2026/train_allscans_valtest_baseline_AD_CN_MCItrain_split.csv
-  dataset_val: /media/backup_16TB/sean/Monai/Metadata/6_1_2026/train_allscans_valtest_baseline_AD_CN_MCIval_split.csv
+  dataset_val: /media/backup_16TB/sean/Monai/Metadata/6_1_2026/AD_MCI_CN_allscanval_split.csv
   dataset_type: mridataset_v2
   num_classes: 3
   frames_per_clip: 16
