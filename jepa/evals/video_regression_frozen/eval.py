@@ -406,14 +406,19 @@ def run_one_epoch(
                 [dij.to(device, non_blocking=True) for dij in di]  # Iterate over spatial views of clip
                 for di in data[0]  # Iterate over temporal index of clip
             ]
-            clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
+            if attend_across_segments:
+                clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
             labels = data[1].to(device, dtype=torch.float16).unsqueeze(1)  # Ensure labels are float32
             batch_size = len(labels)
 
             # Forward pass
             with torch.no_grad():
-                outputs = encoder(clips, clip_indices)
+                if attend_across_segments:
+
+                    outputs = encoder(clips, clip_indices) # only important if attend across_segment
                 
+                else:
+                    outputs = encoder(clips)
                 if not training:
                     if attend_across_segments:
                         outputs = [classifier(o) for o in outputs]

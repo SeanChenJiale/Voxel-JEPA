@@ -1,18 +1,18 @@
 nodes: 1
 tasks_per_node: 1
-tag: AD_alltrainscans_meanintensity
-eval_suffix: val_latest_v2loader
+tag: Age_alltrainscans_meanintensity
+eval_suffix: val_last
 use_latest: true
-eval_name: video_classification_frozen
+eval_name: video_regression_frozen
 resume_checkpoint: false
 data:
-  dataset_train: /home/sean/Voxel-JEPA/finetuning/train_allscans_valtest_baseline__AD_CN_val_split.csv
-  dataset_val: /home/sean/Voxel-JEPA/finetuning/train_allscans_valtest_baseline__AD_CN_val_split.csv
+  dataset_train: //home/sean/Voxel-JEPA/finetuning/meta/train_age_IXI_allscan.csv
+  dataset_val: /home/sean/Voxel-JEPA/finetuning/meta/val_age_IXI_allscan.csv
   dataset_type: mridataset_v2
   num_classes: 2
   frames_per_clip: 16
   num_segments: 1
-  num_workers: 0
+  num_workers: 2
   num_views_per_segment: 1
   frame_step: 4
 
@@ -57,16 +57,16 @@ pretrain:
   patch_size: 16
   folder: /home/sean/Voxel-JEPA/results/
   checkpoint: decode_splice_meanintensity_9_1-latest.pth.tar
-  write_tag: AD_alltrainscans_meanintensity
+  write_tag: age_alltrainscans_meanintensity
   strategy: AD
 logging:
-  project: voxel-jepa-ad-bin-base-final # Don't change this
-  run_name: AD_alltrainscans_meanintensity  # Please change every time before running, this is the name for wandb run file
+  project: voxel-jepa-age-base-final # Don't change this
+  run_name: age_alltrainscans_meanintensity  # Please change every time before running, this is the name for wandb run file
 port: 42005
 app: gram_anchoring
   ##todo run tomorrow 9th april.
   #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/pretrain_maskfix_tiny/tiny_AD_binclass_slice48_mp4/vitl16_brainslice48_ADbinclassifier_lr_half_fix10.yaml --devices cuda:0>/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny/video_classification_frozen/vit_tiny_brainslice48_ADbinclass/lr_half_fix10.log 2>&1
   #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/vit_base/22_9/AD_bin/entropy_loss/AD_FTPT_halfmask_no_entropy.yaml --devices cuda:2 --validation True --plotter csv
-  #python -m evals.main --fname /home/sean/Voxel-JEPA/jepa/configs/evals_a6000/vit_base/AD_bin/mean_loss/12_1_meanintensity.yaml --devices cuda:0 --validation True --plotter csv
+  #python -m evals.main --fname /home/sean/Voxel-JEPA/jepa/configs/evals_a6000/vit_base/age_reg/12_1_meanintensity.yaml --devices cuda:0 --validation True --plotter csv
 
   

@@ -2,4 +2,5 @@
 *.pyc
 wandb/*
 a6000_output/*
-
+finetuning/*
+results/*

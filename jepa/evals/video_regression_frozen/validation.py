@@ -54,6 +54,7 @@ from evals.video_classification_frozen.utils import (
     FrameAggregation
 )
 
+from evals.video_regression_frozen.correlation import correlation
 logging.basicConfig()
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -110,11 +111,29 @@ def load_regressor_weights(model, checkpoint_path, key='classifier', strict=Fals
     except Exception as e:
         logger.error(f"Error loading checkpoint: {e}")
         raise
+
 def main(args_eval, plotter, resume_preempt=False, debug=False):
+    if debug:
+        print('\n\n')
+        print('========================')
+        print('========================')
+        print('In DEBUG MODE')
+        print('========================')
+        print('========================')
+        print('\n\n')
+        mask_dir_path = os.path.join(args_eval.get('pretrain').get('folder'),args_eval.get('eval_name'),args_eval.get('tag'),'iteration_epoch_clip')
+        os.makedirs(mask_dir_path, exist_ok=True)
+        logger.info(f"creating  {mask_dir_path} " )
+    else:
+        print('========================')
+        print('========================')
+        print('IN CLASSIFICATION FINE TUNING')
+        print('========================')
+        print('========================')
     # ----------------------------------------------------------------------- #
     #  PASSED IN PARAMS FROM CONFIG FILE
     # ----------------------------------------------------------------------- #
-    print("\n\n\n\n\n IN VALIDATION \n\n\n\n\n\n")
+
     # -- PRETRAIN
     args_eval_name = args_eval.get('eval_name')
     args_pretrain = args_eval.get('pretrain')
@@ -124,28 +143,16 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     pretrain_folder = args_pretrain.get('folder', None)
     ckp_fname = args_pretrain.get('checkpoint', None)
     tag = args_pretrain.get('write_tag', None)
+    eval_suffix = args_eval.get('eval_suffix', '')
     use_sdpa = args_pretrain.get('use_sdpa', True)
     use_SiLU = args_pretrain.get('use_silu', False)
     tight_SiLU = args_pretrain.get('tight_silu', True)
     uniform_power = args_pretrain.get('uniform_power', False)
-    pretrained_path = os.path.join(pretrain_folder, ckp_fname)
     strategy = args_pretrain.get('strategy','consecutive') # default mri selection is 'consecutive' other is 'skip_1'
+    pretrained_path = os.path.join(pretrain_folder, ckp_fname)
     # Optional [for Video model]:
     tubelet_size = args_pretrain.get('tubelet_size', 2)
     pretrain_frames_per_clip = args_pretrain.get('frames_per_clip', 1)
-
-    # -- DATA
-    args_data = args_eval.get('data')
-    train_data_path = [args_data.get('dataset_train')]
-    val_data_path = [args_data.get('dataset_val')]
-    dataset_type = args_data.get('dataset_type', 'VideoDataset')
-    num_classes = args_data.get('num_classes')
-    eval_num_segments = args_data.get('num_segments', 1)
-    eval_frames_per_clip = args_data.get('frames_per_clip', 16)
-    eval_frame_step = args_pretrain.get('frame_step', 4)
-    eval_duration = args_pretrain.get('clip_duration', None)
-    eval_num_views_per_segment = args_data.get('num_views_per_segment', 1)
-
     # -- DATA AUGS
     cfgs_data_aug = args_eval.get('data_aug',None)
     if cfgs_data_aug is not None:
@@ -164,6 +171,20 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
                         rr_scale=[0.3, 1.0],
                         motion_shift=False,
                         tensor_normalize=((0.485, 0.456, 0.406),(0.229, 0.224, 0.225)))
+    # -- DATA
+    args_data = args_eval.get('data')
+    train_data_path = [args_data.get('dataset_train')]
+    val_data_path = [args_data.get('dataset_val')]
+    dataset_type = args_data.get('dataset_type', 'VideoDataset')
+    num_classes = args_data.get('num_classes')
+    num_workers = args_data.get('num_workers', 1)
+    eval_num_segments = args_data.get('num_segments', 1)
+    eval_frames_per_clip = args_data.get('frames_per_clip', 16)
+    eval_frame_step = args_pretrain.get('frame_step', 4)
+    eval_duration = args_pretrain.get('clip_duration', None)
+    eval_num_views_per_segment = args_data.get('num_views_per_segment', 1)
+    
+
     # -- OPTIMIZATION
     args_opt = args_eval.get('optimization')
     resolution = args_opt.get('resolution', 224)
@@ -180,8 +201,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     # -- EXPERIMENT-ID/TAG (optional)
     resume_checkpoint = args_eval.get('resume_checkpoint', False) or resume_preempt
     eval_tag = args_eval.get('tag', None)
-
-    # ----------------------------------------------------------------------- #
+    use_latest = args_eval.get('use_latest', False)
 
     try:
         mp.set_start_method('spawn')
@@ -205,7 +225,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
         os.makedirs(folder, exist_ok=True)
     log_file = os.path.join(folder, f'{tag}_r{rank}.csv')
     latest_path = os.path.join(folder, f'{tag}-best.pth.tar')
-    if not os.path.exists(latest_path):
+    if use_latest:
         print("\n\n\nLOADING FROM LATEST PATH\n\n\n")
         latest_path = os.path.join(folder, f'{tag}-latest.pth.tar')
     else:
@@ -276,7 +296,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
 
 
     # TRAIN LOOP
-    writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name, f"{tag}eval_results.csv"))
+    writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}_{eval_suffix}_results.csv'))
     if dataset_type == 'VideoDataset':
         writer.writerow(["Label", "Prediction", "Fname"])
     elif dataset_type.lower() == 'mridataset':
@@ -302,6 +322,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
 
         logger.info('[%5d] test: %.3f%%' % (epoch + 1, val_mae))
     
+    correlation(os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}_{eval_suffix}_results.csv'))
 
     #######################
 
@@ -352,7 +373,8 @@ def run_one_epoch(
                 [dij.to(device, non_blocking=True) for dij in di]  # iterate over spatial views of clip
                 for di in data[0]  # iterate over temporal index of clip
             ]
-            clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
+            if attend_across_segments:
+                clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
             # Dynamically check and convert label types
             labels = torch.tensor(
                 [float(label) if isinstance(label, str) else label for label in data[1]],
@@ -363,8 +385,12 @@ def run_one_epoch(
             batch_size = len(labels)
             # Forward pass
             with torch.no_grad():
-                outputs = encoder(clips, clip_indices)
+                if attend_across_segments:
+
+                    outputs = encoder(clips, clip_indices) # only important if attend across_segment
                 
+                else:
+                    outputs = encoder(clips)
                 if not training:
                     if attend_across_segments:
                         outputs = [classifier(o) for o in outputs]

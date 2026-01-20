@@ -23,7 +23,6 @@ def main(
     grad_cam=False
 ):  
     if validation:
-
         logger.info(f'Running evaluation: {eval_name}')
         return importlib.import_module(f'evals.{eval_name}.validation').main(
             args_eval=args_eval,

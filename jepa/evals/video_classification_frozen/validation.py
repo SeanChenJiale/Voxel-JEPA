@@ -192,7 +192,7 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     use_latest = args_eval.get('use_latest', False)
 
     # ----------------------------------------------------------------------- #
-
+    print("DEBUGGING")
     try:
         mp.set_start_method('spawn')
     except Exception:
@@ -290,8 +290,8 @@ def main(args_eval, plotter, resume_preempt=False, debug=False):
     writer,csv_file = init_csv_writer(os.path.join(pretrain_folder, args_eval_name,eval_tag, f'{tag}_{eval_suffix}_results.csv'))
     if dataset_type == 'VideoDataset':
         writer.writerow(["Label", "Prediction", "Fname", "Probabilities"])
-    elif dataset_type.lower() == 'mridataset' or dataset_type.lower() == 'mridataset_v2':
-        writer.writerow(["Label", "Prediction", "Fname", "Axis", "Probabilities"])
+    elif dataset_type.lower() == 'mridataset' or dataset_type.lower() == 'mridataset_v2' or dataset_type.lower() == 'mridataset_chris':
+        writer.writerow(["Label", "Prediction", "Fname", "Indices", "Probabilities"])
     for epoch in range(1):
         val_acc = run_one_epoch(
             device=device,
@@ -349,6 +349,7 @@ def run_one_epoch(
     all_clip_names = []  # To store clip names or identifiers
     all_axis = []  # To store axis information if available
     all_probabilities = []
+    all_indices = []
     for itr, data in enumerate(data_loader):
         
         if training:
@@ -397,8 +398,15 @@ def run_one_epoch(
         all_labels.extend(labels.cpu().numpy().flatten())
         all_predictions.extend(predictions.cpu().numpy())
         all_clip_names.extend(data[3])
+        import pdb; pdb.set_trace()
         if dataset_type.lower() == 'mridataset' or dataset_type.lower() == 'mridataset_v2':
             all_axis.extend(data[5].cpu().tolist())
+            if dataset_type.lower() == 'mridataset_chris':
+                all_indices.extend(data[2][0].tolist())  
+            else:             
+                for tensor in data[2][0]:
+                    # Convert the tensor to a list and extend `all_indices`
+                    all_indices.extend(tensor.cpu().tolist())
 
         # Compute loss
         if attend_across_segments:
@@ -433,8 +441,8 @@ def run_one_epoch(
         logger.info('[%5d] %.3f%% (loss: %.3f) [mem: %.2e]'
                     % (itr, top1_meter.avg, loss,
                         torch.cuda.max_memory_allocated() / 1024.**2))
-    if dataset_type.lower() == 'mridataset' or dataset_type.lower() == 'mridataset_v2':
-        writer.writerows(zip(all_labels, all_predictions,all_clip_names, all_axis, all_probabilities))  # Write rows
+    if dataset_type.lower() == 'mridataset' or dataset_type.lower() == 'mridataset_v2' or dataset_type.lower() == 'mridataset_chris':
+        writer.writerows(zip(all_labels, all_predictions,all_clip_names, all_indices, all_probabilities))  # Write rows
     else:
         writer.writerows(zip(all_labels, all_predictions,all_clip_names, all_probabilities))  # Write rows  # Write rows)
 

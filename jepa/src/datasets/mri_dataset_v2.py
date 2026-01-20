@@ -15,8 +15,6 @@ from logging import getLogger
 import numpy as np
 import pandas as pd
 
-from decord import VideoReader, cpu
-
 import torch
 import ants
 from nibabel.orientations import axcodes2ornt, ornt_transform, io_orientation, apply_orientation
@@ -180,7 +178,6 @@ class MRIDataset(torch.utils.data.Dataset):
         sample = self.samples[idx]
 
         loaded_volume = False
-
         while not loaded_volume:
             try:
                 volume, slice_indices = self.load_volume(idx)
