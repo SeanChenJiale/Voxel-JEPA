@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # List of PIDs to monitor
-PIDS=(3583476)
+PIDS=(3822067 3822066 3822068)
 
 # Function to check if any of the PIDs are still running
 are_pids_running() {
@@ -29,4 +29,4 @@ conda activate jepa
 cd /media/backup_16TB/sean/VoxelJEPA/jepa
 
 # Run the Python script
-python -m app.main --fname /media/backup_16TB/sean/VoxelJEPA/jepa/configs/pretrain_a6000/vit_base/entropy_loss/12_1_2026/decoder_mean_0_1_std_0_05.yaml --devices cuda:0 cuda:1 cuda:2
+python -m app.main --fname /media/backup_16TB/sean/VoxelJEPA/jepa/configs/pretrain_a6000/vit_base/entropy_loss/12_1_2026/decoder_mean_0_3_std_0_15diag.yaml --devices cuda:0 cuda:1 cuda:2

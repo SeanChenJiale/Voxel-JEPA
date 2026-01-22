@@ -398,7 +398,7 @@ def run_one_epoch(
         all_labels.extend(labels.cpu().numpy().flatten())
         all_predictions.extend(predictions.cpu().numpy())
         all_clip_names.extend(data[3])
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         if dataset_type.lower() == 'mridataset' or dataset_type.lower() == 'mridataset_v2':
             all_axis.extend(data[5].cpu().tolist())
             if dataset_type.lower() == 'mridataset_chris':

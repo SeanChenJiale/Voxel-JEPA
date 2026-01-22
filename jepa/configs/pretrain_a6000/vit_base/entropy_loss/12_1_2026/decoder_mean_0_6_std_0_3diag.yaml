@@ -1,7 +1,11 @@
-app: vjepa
+app: entropy
 data:
   cov_loss: true
-  cov_loss_weight: 0.0
+  use_mean: true
+  use_std: true
+  mean_loss_weight: 0.6
+  std_loss_weight: 0.30
+  decoder_only_epochs: 5
   batch_size: 24 #
   clip_duration: null
   crop_size: 224
@@ -16,7 +20,7 @@ data:
   filter_short_videos: false
   num_clips: 1
   num_frames: 16
-  num_workers: 14
+  num_workers: 8
   patch_size: 16
   pin_mem: true
   sampling_rate: 4
@@ -42,9 +46,9 @@ data_aug:
     - 0.267249
 logging:
   folder:  /media/backup_16TB/sean/VJEPA_results/base
-  write_tag: decode_splice_no_ent_9_1
+  write_tag: decode_splice_no_ent_9_1_mean_0_6std_div_0_3_diag
   project: voxel-jepa-base-decoder-only # Don't change this
-  run_name: decode_splice_no_ent_9_1 #vitbase_mri_ctn_50epoch_from_k400_24_8_wgram2 # Please change every time before running
+  run_name: decode_splice_no_ent_9_1_mean_0_6std_div_0_3_diag #vitbase_mri_ctn_50epoch_from_k400_24_8_wgram2 # Please change every time before running
 
 #NEW: Decoder configuration
 decoder:
@@ -109,7 +113,7 @@ optimization:
   ema:
   - 0.998
   - 1.0
-  epochs: 50 #300   #video: 100, mri: 50
+  epochs: 55 #300   #video: 100, mri: 50
   final_lr: 1.0e-06
   final_weight_decay: 0.4
   ipe_scale: 1.25
