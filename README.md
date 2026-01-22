@@ -32,8 +32,6 @@ NAASSL/
 
 │ ├── wandb/ # Weights & Biases logging 
 
-├── data/ # Placeholder for input/output data 
-
 ├── README.md # Project documentation
 
 ├── requirements.txt # Python dependencies 
