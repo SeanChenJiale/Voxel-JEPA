@@ -17,16 +17,27 @@ The repository leverages PyTorch and ANTs for efficient tensor operations and im
 ## Repository Structure
 
 NAASSL/ 
+
 ├── jepa/
+
 │ ├── src/ 
+
 │ │ ├── utils/ 
+
 │ │ │ ├── entropy_loss.py # Core utility for entropy and trace calculations 
+
 │ │ ├── models/ # Model definitions 
+
 │ │ ├── configs/ # Configuration files for experiments 
+
 │ ├── wandb/ # Weights & Biases logging 
+
 ├── data/ # Placeholder for input/output data 
+
 ├── README.md # Project documentation
+
 ├── requirements.txt # Python dependencies 
+
 └── LICENSE # License information
 
 
