@@ -50,8 +50,8 @@ NAASSL/
    ```
 2. Create a Python virtual environment:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   python -m venv naassl
+   source naassl/bin/activate  # On Windows: naassl\Scripts\activate
    ```
 3. Install the required dependancies:
    ```bash
