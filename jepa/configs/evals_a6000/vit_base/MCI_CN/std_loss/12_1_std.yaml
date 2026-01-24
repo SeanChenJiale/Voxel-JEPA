@@ -67,6 +67,6 @@ app: gram_anchoring
   ##todo run tomorrow 9th april.
   #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/pretrain_maskfix_tiny/tiny_AD_binclass_slice48_mp4/vitl16_brainslice48_ADbinclassifier_lr_half_fix10.yaml --devices cuda:0>/media/backup_16TB/sean/VJEPA/a6000_output/pretrain_maskfix1_tiny/video_classification_frozen/vit_tiny_brainslice48_ADbinclass/lr_half_fix10.log 2>&1
   #python -m evals.main --fname /media/backup_16TB/sean/VJEPA/jepa/configs/evals_a6000/vit_base/22_9/AD_bin/entropy_loss/AD_FTPT_halfmask_no_entropy.yaml --devices cuda:2 --validation True --plotter csv
-  #python -m evals.main --fname /media/backup_16TB/sean/VoxelJEPA/jepa/configs/evals_a6000/vit_base/AD_bin/mean_loss/12_1_meanintensity.yaml --devices cuda:2 --validation True --plotter csv
+  #python -m evals.main --fname /media/backup_16TB/sean/VoxelJEPA/jepa/configs/evals_a6000/vit_base/MCI_CN/std_loss/12_1_std.yaml --devices cuda:2 --validation True --plotter csv
 
   

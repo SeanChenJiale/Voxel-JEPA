@@ -152,11 +152,11 @@ def calculate_trace_torch(batch_reconstructed_video, batch_indices_list, batch_a
     right_regions = [i for i, (_, name) in enumerate(subcortical_labels) if "Right" in name]
     top_right_square = corr_matrix[left_regions, :][:, right_regions]
 
-    trace = torch.diag(top_right_square) / num_regions
+    # trace = torch.diag(top_right_square) / num_regions
     # # Compute the trace of the top-right square working 19/1/2026
-    # trace = torch.trace(top_right_square) 
-    # trace = torch.clamp(trace, min=0.0, max=num_regions)
-    # trace = trace / num_regions
+    trace = torch.trace(top_right_square) 
+    trace = torch.clamp(trace, min=0.0, max=num_regions)
+    trace = trace / num_regions
     return trace
 
 

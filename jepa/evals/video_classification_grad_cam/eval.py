@@ -493,11 +493,15 @@ def run_one_epoch(
                 [dij.to(device, non_blocking=True) for dij in di]
                 for di in data[0]
             ]
-            clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
+            # clip_indices = [d.to(device, non_blocking=True) for d in data[2]]
             labels = data[1].to(device)
             batch_size = len(labels)
+            if attend_across_segments:
 
-            outputs = encoder(clips, clip_indices)
+                outputs = encoder(clips, clip_indices) # only important if attend across_segment
+            
+            else:
+                outputs = encoder(clips)
             print(f"[GradCAM DEBUG] After forward: hook.activations is not None: {hook is not None and hasattr(hook, 'activations') and hook.activations is not None}")
             if hook is not None and hasattr(hook, 'activations') and hook.activations is not None:
                 print("[GradCAM DEBUG] hook.activations.requires_grad:", hook.activations.requires_grad)
