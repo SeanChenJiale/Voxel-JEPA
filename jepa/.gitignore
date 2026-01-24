@@ -1,4 +1,12 @@
 .*.swp
 *.pyc
 wandb/*
-
+a6000_output/*
+finetuning/*
+results/*
+./jepa/configs/evals_a6000/*
+./jepa/onfigs/evals_a6000_csv/*
+./jepa/configs/pretrain_a6000/*
+./jepa/configs/pretrain_a6000_csv/*
+./jepa/app_scratch/*
+./jepa/app_scratch_mlp/*
