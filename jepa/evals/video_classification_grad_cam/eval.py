@@ -148,7 +148,7 @@ def make_dataloader(
     num_views_per_segment=1,
     allow_segment_overlap=True,
     training=False,
-    num_workers=12,
+    num_workers=0,
     subset_file=None,
     strategy='consecutive'
 ):
@@ -245,12 +245,14 @@ def main(args_eval,plotter, resume_preempt=False, debug=False):
     val_data_path = [args_data.get('dataset_val')]
     dataset_type = args_data.get('dataset_type', 'VideoDataset')
     num_classes = args_data.get('num_classes')
+    num_workers = args_data.get('num_workers', 1)
     eval_num_segments = args_data.get('num_segments', 1)
     eval_frames_per_clip = args_data.get('frames_per_clip', 16)
     eval_frame_step = args_pretrain.get('frame_step', 4)
     eval_duration = args_pretrain.get('clip_duration', None)
     eval_num_views_per_segment = args_data.get('num_views_per_segment', 1)
-    
+    samples_to_plot_list = args_data.get('sample_to_plot_list', None)
+
 
     # -- DATA AUGS
     cfgs_data_aug = args_eval.get('data_aug',None)
@@ -286,6 +288,7 @@ def main(args_eval,plotter, resume_preempt=False, debug=False):
     # -- EXPERIMENT-ID/TAG (optional)
     resume_checkpoint = args_eval.get('resume_checkpoint', False) or resume_preempt
     eval_tag = args_eval.get('tag', None)
+    use_latest = args_eval.get('use_latest', False)
         
     # -- LOGGING    
     args_logging = args_eval.get('logging')
@@ -316,7 +319,7 @@ def main(args_eval,plotter, resume_preempt=False, debug=False):
         os.makedirs(folder, exist_ok=True)
     log_file = os.path.join(folder, f'{tag}_r{rank}.csv')
     latest_path = os.path.join(folder, f'{tag}-best.pth.tar')
-    if not os.path.exists(latest_path):
+    if use_latest:
         print("\n\n\nLOADING FROM LATEST PATH\n\n\n")
         latest_path = os.path.join(folder, f'{tag}-latest.pth.tar')
     else:
@@ -413,6 +416,10 @@ def main(args_eval,plotter, resume_preempt=False, debug=False):
     #     raise Exception
     logger.info(f'Dataloader created... iterations per epoch: {ipe}')
 
+    if samples_to_plot_list is not None:
+        logger.info(f'Grad-CAM samples to plot: {samples_to_plot_list}')
+    else:
+        logger.info('No Grad-CAM samples to plot. Picking Randomly from Dataset')
     # -- optimizer and scheduler
     optimizer, scaler, scheduler, wd_scheduler = init_opt(
         classifier=classifier,
@@ -451,8 +458,10 @@ def main(args_eval,plotter, resume_preempt=False, debug=False):
         wd_scheduler=wd_scheduler,
         data_loader=val_loader,
         use_bfloat16=use_bfloat16,
-        hook=hook)
-    
+        hook=hook,
+        samples_to_plot_list=samples_to_plot_list
+    )
+
     logger.info('test: %.3f%%' % ( val_acc))
 
 def run_one_epoch(
@@ -469,7 +478,8 @@ def run_one_epoch(
     num_spatial_views,
     num_temporal_views,
     attend_across_segments,
-    hook=None
+    hook=None,
+    samples_to_plot_list=None
 ):
 
     classifier.train(mode=training)
@@ -481,7 +491,8 @@ def run_one_epoch(
     class_activations = {}  # {class_id: [list of activations]}
     class_counts = {}
     class_inputs = {}  # Store representative inputs per class
-
+    class_inputs_filename = {}
+    all_clip_names = []  # To store clip names or identifiers
     for itr, data in enumerate(data_loader):
         if training:
             scheduler.step()
@@ -502,9 +513,9 @@ def run_one_epoch(
             
             else:
                 outputs = encoder(clips)
-            print(f"[GradCAM DEBUG] After forward: hook.activations is not None: {hook is not None and hasattr(hook, 'activations') and hook.activations is not None}")
+            # print(f"[GradCAM DEBUG] After forward: hook.activations is not None: {hook is not None and hasattr(hook, 'activations') and hook.activations is not None}")
             if hook is not None and hasattr(hook, 'activations') and hook.activations is not None:
-                print("[GradCAM DEBUG] hook.activations.requires_grad:", hook.activations.requires_grad)
+                # print("[GradCAM DEBUG] hook.activations.requires_grad:", hook.activations.requires_grad)
                 if hook.activations.requires_grad:
                     hook.activations.register_hook(hook.save_gradient)
                 else:
@@ -522,7 +533,7 @@ def run_one_epoch(
                     outputs = [classifier(o) for o in outputs]
                 else:
                     outputs = [[classifier(ost) for ost in os] for os in outputs]
-
+        all_clip_names.extend(data[3])
         # Compute loss
         if attend_across_segments:
             loss = sum([criterion(o, labels) for o in outputs]) / len(outputs)
@@ -581,11 +592,13 @@ def run_one_epoch(
                 class_activations[target_class].append(sample_activations)
                 class_gradients[target_class].append(sample_gradients)
                 class_counts[target_class] += 1
-                
+
                 # Store a representative input for this class (first occurrence)
                 if class_inputs[target_class] is None:
                     try:
                         class_inputs[target_class] = clips[0][0][sample_idx].detach().cpu()
+                        class_inputs_filename[target_class] = all_clip_names[sample_idx]
+
                     except Exception:
                         class_inputs[target_class] = None
 
@@ -632,7 +645,8 @@ def run_one_epoch(
                     'class_id': class_id,
                     'num_samples': class_counts[class_id],
                     'individual_activations': stacked_activations,
-                    'individual_gradients': stacked_gradients
+                    'individual_gradients': stacked_gradients,
+                    'class_inputs_filename': class_inputs_filename[class_id]  # Include all clip names here
                 }, class_save_path)
                 
                 print(f"[GradCAM] Saved class {class_id} Grad-CAM to {class_save_path}")

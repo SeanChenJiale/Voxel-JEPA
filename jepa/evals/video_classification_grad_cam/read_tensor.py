@@ -11,7 +11,7 @@ def read_tensor(tensor_path,class_id=None):
     parentdir = os.path.dirname(tensor_path)
     # Load the saved Grad-CAM tensors
     data = torch.load(tensor_path)
-    # print(data.keys())
+    print(data.keys())
     # print(data['input'].shape)
 
     #%%
@@ -75,40 +75,53 @@ def read_tensor(tensor_path,class_id=None):
         input_patch_img = np.transpose(input_patch_mean, (1, 2, 0))  # [224, 224, 3]
         input_patch_img = (input_patch_img - input_patch_img.min()) / (input_patch_img.max() - input_patch_img.min() + 1e-8)
 
+        # Rotate the input patch image 180 degrees
+        input_patch_img = np.rot90(input_patch_img, 2)  # Rotate 180 degrees
+
+        # Rotate the Grad-CAM heatmap 180 degrees
+        frame_cam_resized = np.rot90(frame_cam_resized, 2)  # Rotate 180 degrees
+
         # Plot input and Grad-CAM side by side
         plt.figure(figsize=(8, 4))
         plt.subplot(1, 2, 1)
-        plt.imshow(input_patch_img)
+        plt.imshow(input_patch_img, aspect='equal')  # Ensure consistent aspect ratio
         plt.title(f'Input Patch Mean {i} ({start}-{end-1})')
         plt.axis('off')
         plt.subplot(1, 2, 2)
-        plt.imshow(input_patch_img)
-        plt.imshow(frame_cam_resized, cmap='jet', alpha=0.5)
+        plt.imshow(input_patch_img, aspect='equal')  # Ensure consistent aspect ratio
+        plt.imshow(frame_cam_resized, cmap='jet', alpha=0.5, aspect='equal')  # Overlay Grad-CAM
         plt.title(f'Grad-CAM Patch {i}')
         plt.axis('off')
         plt.colorbar(fraction=0.046, pad=0.04)
         plt.tight_layout()
         plt.savefig(f'{parentdir}/class_{class_id}_gradcam_patch_{i}.png')
+        plt.close()
+    print(f'Saved: {parentdir}/class_{class_id}_gradcam_patch_{i}.png')
         # plt.show()
 
-    # Find the most and least important frames
-    most_important_frame = np.argmax(frame_importance)
-    least_important_frame = np.argmin(frame_importance)
 
-    print(f"\nMost important frame: {most_important_frame} (score: {frame_importance[most_important_frame]:.4f})")
-    print(f"Least important frame: {least_important_frame} (score: {frame_importance[least_important_frame]:.4f})")
+if __name__ == "__main__":
+    read_tensor("/media/backup_16TB/sean/VJEPA_results/base/video_classification_frozen/MCICN_alltrainscans_nomeaninten/MCICN_alltrainscans_nomeaninten_run3_gradcam/gradcam_class_1.pt", class_id = 1)
+    # # Find the most and least important frames
+    # most_important_frame = np.argmax(frame_importance)
+    # least_important_frame = np.argmin(frame_importance)
+
+    # print(f"\nMost important frame: {most_important_frame} (score: {frame_importance[most_important_frame]:.4f})")
+    # print(f"Least important frame: {least_important_frame} (score: {frame_importance[least_important_frame]:.4f})")
 
 
-    # Plot frame importance over time
-    plt.figure(figsize=(10, 6))
-    plt.plot(range(num_frames), frame_importance, 'o-', linewidth=2, markersize=8)
-    plt.xlabel('Frame Index')
-    plt.ylabel('Importance Score')
-    plt.title('Frame Importance Over Time (Grad-CAM)')
-    plt.grid(True, alpha=0.3)
-    plt.xticks(range(num_frames))
-    plt.savefig(f'{parentdir}/class_{class_id}_frame_importance_.png')
-    plt.show()
+    # # Plot frame importance over time
+    # plt.figure(figsize=(10, 6))
+    # plt.plot(range(num_frames), frame_importance, 'o-', linewidth=2, markersize=8)
+    # plt.xlabel('Frame Index')
+    # plt.ylabel('Importance Score')
+    # plt.title('Frame Importance Over Time (Grad-CAM)')
+    # plt.grid(True, alpha=0.3)
+    # plt.xticks(range(num_frames))
+    # plt.savefig(f'{parentdir}/class_{class_id}_frame_importance_.png')
+    # plt.show()
+
+
     # # %%
     # # Select the patch/frame index you believe covers the hippocampus best
     # patch_idx = 0  # Change as needed

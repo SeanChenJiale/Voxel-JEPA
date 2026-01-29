@@ -538,7 +538,7 @@ def make_dataloader(
     num_views_per_segment=1,
     allow_segment_overlap=True,
     training=False,
-    num_workers=12,
+    num_workers=4,
     subset_file=None,
     strategy='consecutive' #+
 ):

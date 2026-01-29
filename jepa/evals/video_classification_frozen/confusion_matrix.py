@@ -8,7 +8,7 @@ import pandas as pd
 import sklearn.metrics
 import numpy as np
 from sklearn.metrics import roc_auc_score
-
+from evals.video_classification_frozen.calculate_f1 import calculate_f1_from_confusion_matrix
 def plot_confusion_matrix(csv_path, is_multiclass=False):
     # --------- USER CONFIGURATION ---------
     # csv_path = "/media/backup_16TB/sean/VJEPA_results/base/video_classification_frozen/skip1_ftpt/skip1_ftpteval_results.csv"
@@ -89,7 +89,8 @@ def plot_confusion_matrix(csv_path, is_multiclass=False):
     from sklearn.metrics import f1_score
     from sklearn.metrics import precision_score
     if is_multiclass:
-        pass
+        f1_scores = calculate_f1_from_confusion_matrix(cm)
+        f1 = f1_scores['weighted_f1'] # f1 is weighted
 
     else:
         f1 = f1_score(df['Label'], df['Prediction'])
@@ -104,13 +105,13 @@ def plot_confusion_matrix(csv_path, is_multiclass=False):
     disp.plot(ax=ax, colorbar=False, cmap='Blues')
     
     if is_multiclass:
-        plt.title(f'Confusion Matrix (Coronal Only)\nAccuracy: {accuracy:.5f}, AUC: {auc:.3f}, Sensitivity: {sensitivity:.3f}, Specificity: {specificity:.3f}')
+        plt.title(f'Confusion Matrix (Coronal Only)\nAccuracy: {accuracy:.5f}, AUC: {auc:.3f}, Sensitivity: {sensitivity:.3f}, Specificity: {specificity:.3f}\nF1: {f1:.4f},')
     else:
         plt.title(f'Confusion Matrix (Coronal Only)\nAccuracy: {accuracy:.5f}, AUC: {auc:.3f}, Sensitivity: {sensitivity:.3f}, Specificity: {specificity:.3f}\nF1: {f1:.4f}, Precision: {precision:.4f}')
     plt.tight_layout()
     plt.savefig(output_img)  # Save the plot to file
     print(f"saved fig to {output_img}")
-    plt.show()
+
 
 
     with open(output_txt, "w") as f:
