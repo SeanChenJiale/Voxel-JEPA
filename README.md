@@ -1,7 +1,7 @@
-# NAASSL
+# NAISSL
 
-![NAASSL framework](updated_framework.png)
-NAASSL is a deep learning framework designed for analyzing and processing 3D medical imaging data. It includes utilities for entropy-based subcortical analysis, video reconstruction, and correlation-based metrics for neuroimaging datasets. 
+![NAISSL framework](updated_framework_.png)
+NAISSL is a deep learning framework designed for analyzing and processing 3D medical imaging data. It includes utilities for entropy-based subcortical analysis, video reconstruction, and correlation-based metrics for neuroimaging datasets. 
 The repository leverages PyTorch and ANTs for efficient tensor operations and image processing.
 
 ---
