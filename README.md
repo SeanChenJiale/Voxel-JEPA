@@ -46,7 +46,7 @@ NAASSL/
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/SeanChenJiale/NAASSL.git
+   git clone 
    cd NAASSL
    ```
 2. Create a Python virtual environment:
